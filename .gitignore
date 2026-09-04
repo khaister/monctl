@@ -7,3 +7,4 @@ tests/unit/test_mode_selection
 .idea/
 .vscode/
 cmake-build-debug/
+.claude/
