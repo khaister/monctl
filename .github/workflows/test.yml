@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build displayplacer
+      - name: Build monctl
         run: make -C src
 
       - name: Run C unit tests (mode selection)

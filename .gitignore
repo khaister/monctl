@@ -1,5 +1,5 @@
-displayplacer
-displayplacer.dSYM/
+monctl
+monctl.dSYM/
 tests/unit/test_mode_selection
 
 .DS_Store
