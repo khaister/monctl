@@ -70,7 +70,7 @@ monctl "id:<screenId> enabled:false"
 ## ScreenIds Switching
 
 > [!WARNING]
-> macOS sometimes changes persistent screenIds when there are race conditions from external screens waking up in non-deterministic order. If none of the screenId options below work for your setup, search displayplacer's GitHub Issues for conversation on this — it's inherited, upstream behavior, so the existing discussions still apply. Many people have written shell scripts to work around this. Recommended discussions: [one](https://github.com/jakehilborn/displayplacer/issues/80), [two](https://github.com/jakehilborn/displayplacer/issues/30), [three](https://github.com/jakehilborn/displayplacer/issues/89), [four](https://github.com/jakehilborn/displayplacer/issues/77), [five](https://github.com/jakehilborn/displayplacer/issues/100), [six](https://github.com/jakehilborn/displayplacer/pull/96).
+> macOS sometimes changes persistent screenIds when there are race conditions from external screens waking up in non-deterministic order. If none of the screenId options below work for your setup, search displayplacer's GitHub Issues for conversation on this — it's inherited, upstream behavior, so the existing discussions still apply. Many people have written shell scripts to work around this. Recommended discussions: https://github.com/jakehilborn/displayplacer/issues/80, https://github.com/jakehilborn/displayplacer/issues/30, https://github.com/jakehilborn/displayplacer/issues/89, https://github.com/jakehilborn/displayplacer/issues/77, https://github.com/jakehilborn/displayplacer/issues/100, https://github.com/jakehilborn/displayplacer/pull/96.
 
 You can mix and match screenId types across your setup:
 
@@ -107,7 +107,3 @@ You can mix and match screenId types across your setup:
 > ```sh
 > monctl list --v1.3.0
 > ```
-
-## Feedback
-
-Please create a GitHub Issue at [khaister/monctl](https://github.com/khaister/monctl) for any feedback, feature requests, or bugs specific to this fork. Happy to accept pull requests too!
