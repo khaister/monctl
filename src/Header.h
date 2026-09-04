@@ -43,6 +43,35 @@ static void CopyAllDisplayModes(CGDirectDisplayID display, modes_D4** modes, int
     }
 }
 
+//Finds the mode in `modes` that best matches the required width/height and optional hz/depth/scaled filters
+//(hz==0 and depth==0 mean "any"). Among matches, prefers the highest hz, then the highest color depth.
+//Returns a pointer into `modes`, or NULL if no mode matches.
+static inline modes_D4* selectBestMode(modes_D4* modes, int modeCount, int width, int height, int hz, int depth, bool scaled) {
+    modes_D4* bestMode = NULL;
+
+    for (int i = 0; i < modeCount; i++) {
+        modes_D4* curMode = &modes[i];
+
+        //prioritize exact matches of user input params
+        if (curMode->derived.width != width) continue;
+        if (curMode->derived.height != height) continue;
+        if (hz && curMode->derived.freq != hz) continue;
+        if (depth && curMode->derived.depth != depth) continue;
+        if (scaled && curMode->derived.density != 2.0) continue;
+        if (!scaled && curMode->derived.density == 2.0) continue;
+
+        if (!bestMode) {
+            bestMode = curMode;
+        }
+
+        if (curMode->derived.freq > bestMode->derived.freq || (curMode->derived.freq == bestMode->derived.freq && curMode->derived.depth > bestMode->derived.depth)) {
+            bestMode = curMode;
+        }
+    }
+
+    return bestMode;
+}
+
 static const int UUID_SIZE = 37;
 static const int MIRROR_MAX = 127;
 

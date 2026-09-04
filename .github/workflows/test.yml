@@ -1,0 +1,21 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build displayplacer
+        run: make -C src
+
+      - name: Run C unit tests (mode selection)
+        run: make -C src test
+
+      - name: Run hardware-independent CLI tests
+        run: python3 tests/unit/test_cli.py
