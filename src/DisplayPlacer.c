@@ -695,33 +695,10 @@ bool setResolution(CGDisplayConfigRef configRef, CGDirectDisplayID screenId, cha
 
     CopyAllDisplayModes(screenId, &modes, &modeCount);
 
-    modes_D4 bestMode = modes[0];
-    bool modeFound = false;
+    modes_D4* bestMode = selectBestMode(modes, modeCount, width, height, hz, depth, scaled);
 
-    //loop through all modes looking for one that matches user input params
-    for (int i = 0; i < modeCount; i++) {
-        modes_D4 curMode = modes[i];
-
-        //prioritize exact matches of user input params
-        if (curMode.derived.width != width) continue;
-        if (curMode.derived.height != height) continue;
-        if (hz && curMode.derived.freq != hz) continue;
-        if (depth && curMode.derived.depth != depth) continue;
-        if (scaled && curMode.derived.density != 2.0) continue;
-        if (!scaled && curMode.derived.density == 2.0) continue;
-
-        if (!modeFound) {
-            modeFound = true;
-            bestMode = curMode;
-        }
-
-        if (curMode.derived.freq > bestMode.derived.freq || (curMode.derived.freq == bestMode.derived.freq && curMode.derived.depth > bestMode.derived.depth)) {
-            bestMode = curMode;
-        }
-    }
-
-    if (modeFound) {
-        CGSConfigureDisplayMode(configRef, screenId, bestMode.derived.mode);
+    if (bestMode) {
+        CGSConfigureDisplayMode(configRef, screenId, bestMode->derived.mode);
         free(modes);
         return true;
     }

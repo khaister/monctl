@@ -1,5 +1,6 @@
 displayplacer
 displayplacer.dSYM/
+tests/unit/test_mode_selection
 
 .DS_Store
 

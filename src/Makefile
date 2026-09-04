@@ -61,6 +61,16 @@ debug: displayplacer
 install: displayplacer
 	$(INSTALL_PROGRAM) $< $(DESTDIR)$(bindir)
 
+# Hardware-independent C unit tests (mode selection logic). Deliberately does not
+# link MonitorPanel.m or any private framework, so it builds and runs anywhere.
+.PHONY: test
+test: ../tests/unit/test_mode_selection
+	../tests/unit/test_mode_selection
+
+../tests/unit/test_mode_selection: ../tests/unit/test_mode_selection.c Header.h
+	$(CC) -I. $< -o $@ -framework IOKit -framework ApplicationServices
+
 .PHONY: clean
 clean:
 	rm -f displayplacer
+	rm -f ../tests/unit/test_mode_selection
