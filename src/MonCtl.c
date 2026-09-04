@@ -245,7 +245,7 @@ void printHelp() {
 
 void printVersion() {
     printf(
-        "monctl v1.5.0-dev\n"
+        "monctl v0.1.0\n"
         "\n"
         "GitHub: https://github.com/khaister/monctl\n"
     );
