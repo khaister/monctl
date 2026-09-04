@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Manual, hardware-dependent regression suite for displayplacer.
+"""Manual, hardware-dependent regression suite for monctl.
 
 Run this BY HAND against your own real monitor setup. It is NOT part of CI -
 see tests/unit/ for the suite that runs there. This discovers whatever
-screens are actually connected via `displayplacer list` and adapts its
+screens are actually connected via `monctl list` and adapts its
 scenarios to however many are present, instead of assuming a specific
 topology - previous versions of this file hardcoded UUIDs from the original
 developer's own 4-monitor Mac and could only ever run there.
@@ -25,13 +25,13 @@ import re
 import subprocess
 import sys
 
-BINARY = '../src/displayplacer'
+BINARY = '../src/monctl'
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
 
 failures = []
 
 
-def displayplacer(args):
+def monctl(args):
     p = subprocess.Popen(BINARY + ' ' + args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = p.communicate()[0].decode('utf-8').strip()
     code = p.wait()
@@ -39,19 +39,19 @@ def displayplacer(args):
 
 
 def discover_screens():
-    output, code = displayplacer('list')
+    output, code = monctl('list')
     if code != 0:
-        print('Could not run `displayplacer list` - aborting')
+        print('Could not run `monctl list` - aborting')
         sys.exit(1)
     return re.findall(r'Persistent screen id: (\S+)', output)
 
 
 def current_profile_command():
-    """The reconstructed `displayplacer "..."` command for whatever is live right now."""
-    output, code = displayplacer('list')
+    """The reconstructed `monctl "..."` command for whatever is live right now."""
+    output, code = monctl('list')
     last_line = output.splitlines()[-1]
-    assert last_line.startswith('displayplacer ')
-    return last_line[len('displayplacer '):]
+    assert last_line.startswith('monctl ')
+    return last_line[len('monctl '):]
 
 
 def screen_properties(conf, uuid):
@@ -70,7 +70,7 @@ def screen_properties(conf, uuid):
 
 def test(step, conf, expected_conf=None, expected_code=0, expected_error=None):
     print(f'Executing {step}')
-    output, code = displayplacer(conf)
+    output, code = monctl(conf)
 
     try:
         if expected_error:
@@ -78,9 +78,9 @@ def test(step, conf, expected_conf=None, expected_code=0, expected_error=None):
         if expected_code is not None:
             assert code == expected_code
         if expected_conf:
-            list_output, list_code = displayplacer('list')
+            list_output, list_code = monctl('list')
             target = conf if expected_conf == 'match_input' else expected_conf
-            assert list_output.splitlines()[-1] == 'displayplacer ' + target
+            assert list_output.splitlines()[-1] == 'monctl ' + target
             assert list_code == 0
     except AssertionError as e:
         failures.append(step)

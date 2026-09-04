@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hardware-independent, CI-safe black-box tests for the displayplacer CLI.
+"""Hardware-independent, CI-safe black-box tests for the monctl CLI.
 
 Every case here either never touches CoreGraphics (--help/--version) or is
 built on a deliberately nonexistent screen id/resolution, so it fails cleanly
@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 
-BINARY = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'displayplacer')
+BINARY = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'monctl')
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
 FAKE_CONTEXTUAL_ID = '999999'
 FAKE_SERIAL_ID = 's999999999'
@@ -62,8 +62,8 @@ def test_no_args_prints_help():
 def test_version():
     output, code = run('--version')
     check('--version exits 0', code == 0)
-    check('--version mentions displayplacer v', 'displayplacer v' in output)
-    check('--version mentions the developer', 'Developer: Jake Hilborn' in output)
+    check('--version mentions monctl v', 'monctl v' in output)
+    check('--version mentions the GitHub repo', 'github.com/khaister/monctl' in output)
 
 
 def test_list_smoke():
@@ -71,7 +71,7 @@ def test_list_smoke():
     check('list exits 0', code == 0)
     check('list mentions Persistent screen id', 'Persistent screen id:' in output)
     check('list mentions Serial screen id (v1.4.0+ format)', 'Serial screen id:' in output)
-    check('list prints a reconstructed displayplacer command', 'displayplacer "id:' in output)
+    check('list prints a reconstructed monctl command', 'monctl "id:' in output)
 
 
 def test_list_legacy_format_smoke():
@@ -146,7 +146,7 @@ def test_missing_resolution_on_a_real_screen():
 
 def main():
     if not os.path.exists(BINARY):
-        print(f'displayplacer binary not found at {BINARY} - build it first (make -C src)')
+        print(f'monctl binary not found at {BINARY} - build it first (make -C src)')
         sys.exit(1)
 
     test_help()

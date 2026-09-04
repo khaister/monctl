@@ -95,7 +95,7 @@ typedef struct
     bool quietMissingScreen;                 //prevent printing error logs and exiting non-zero when this screen cannot be found
 } ScreenConfig;
 
-//DisplayPlacer.c
+//MonCtl.c
 void printHelp();
 void printVersion();
 void listScreens();
@@ -119,6 +119,6 @@ bool setPosition(CGDisplayConfigRef configRef, CGDirectDisplayID screenId, char*
 //MonitorPanel.m
 bool setRotation(CGDirectDisplayID screenId, char* screenUUID, int degree);
 
-//Old version implementations for backward compatability with programmatic usage of displayplacer
+//Old version implementations for backward compatability with programmatic usage of monctl
 void v130_listScreens();
 void v130_printCurrentProfile();

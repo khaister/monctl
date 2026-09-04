@@ -54,7 +54,7 @@ void v130_listScreens() {
 
         printf("Rotation: %i", (int) CGDisplayRotation(curScreen));
         if (CGDisplayIsBuiltin(curScreen)) {
-            printf(" - rotate internal screen example (may crash computer, but will be rotated after rebooting): `displayplacer \"id:%s degree:90\"`", curScreenUUID);
+            printf(" - rotate internal screen example (may crash computer, but will be rotated after rebooting): `monctl \"id:%s degree:90\"`", curScreenUUID);
         }
         printf("\n");
 
@@ -122,7 +122,7 @@ void v130_printCurrentProfile() {
     }
 
     printf("Execute the command below to set your screens to the current arrangement:\n\n");
-    printf("displayplacer");
+    printf("monctl");
     for (int i = 0; i < screenCount; i++) {
         ScreenConfig curScreen = screenConfigs[i];
 
