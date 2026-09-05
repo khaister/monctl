@@ -31,7 +31,7 @@ func tokenize(_ s: String, delimiters: Set<Character>) -> [String] {
 /// `strtok_r(s, ":", &savePtr)` call followed by one more.
 func splitFirst(_ s: String, on delimiter: Character) -> (String, String?) {
     if let idx = s.firstIndex(of: delimiter) {
-        return (String(s[s.startIndex..<idx]), String(s[s.index(after: idx)...]))
+        return (String(s[s.startIndex ..< idx]), String(s[s.index(after: idx)...]))
     }
     return (s, nil)
 }
@@ -40,7 +40,7 @@ func splitFirst(_ s: String, on delimiter: Character) -> (String, String?) {
 /// at the first non-digit instead of requiring the whole string to be
 /// numeric (unlike `Int(String)`). Returns 0 for nil/unparseable input.
 func catoi(_ s: String?) -> Int {
-    guard let s = s else { return 0 }
+    guard let s else { return 0 }
     var chars = Substring(s)
     while let first = chars.first, first == " " || first == "\t" || first == "\n" {
         chars.removeFirst()
@@ -48,7 +48,9 @@ func catoi(_ s: String?) -> Int {
 
     var sign = 1
     if let first = chars.first, first == "+" || first == "-" {
-        if first == "-" { sign = -1 }
+        if first == "-" {
+            sign = -1
+        }
         chars.removeFirst()
     }
 

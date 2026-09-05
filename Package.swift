@@ -10,7 +10,7 @@ let package = Package(
             path: "Sources/CDisplayCore",
             publicHeadersPath: "include",
             cSettings: [
-                .unsafeFlags(["-Wno-deprecated-declarations", "-fno-objc-arc"])
+                .unsafeFlags(["-Wno-deprecated-declarations", "-fno-objc-arc"]),
             ],
             linkerSettings: [
                 .unsafeFlags([
@@ -20,7 +20,7 @@ let package = Package(
                     "-framework", "OSD",
                     "-framework", "CoreDisplay",
                     "-framework", "DisplayServices",
-                ])
+                ]),
             ]
         ),
         .executableTarget(

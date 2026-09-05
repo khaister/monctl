@@ -1,5 +1,5 @@
-import CDisplayCore
 import ApplicationServices
+import CDisplayCore
 import Foundation
 
 /// `legacy` selects the `--v1.3.0` formatting: drop the "Serial screen id" line
@@ -20,7 +20,8 @@ func listScreens(legacy: Bool) {
             print("Type: MacBook built in screen")
         } else {
             let size = CGDisplayScreenSize(curScreen)
-            let diagonal = Int((sqrt(size.width * size.width + size.height * size.height) / 25.4).rounded()) // 25.4mm in an inch
+            let diagonal = Int((sqrt(size.width * size.width + size.height * size.height) / 25.4)
+                .rounded()) // 25.4mm in an inch
             print("Type: \(diagonal) inch external screen")
         }
 
@@ -52,7 +53,7 @@ func listScreens(legacy: Bool) {
 
         let modeCount = getDisplayModeCount(curScreen)
         print("Resolutions for rotation \(Int(CGDisplayRotation(curScreen))):")
-        for j in 0..<modeCount {
+        for j in 0 ..< modeCount {
             let mode = getDisplayMode(curScreen, j)
 
             var line = "  mode \(j): res:\(mode.width)x\(mode.height)"
@@ -81,12 +82,13 @@ private struct ProfileEntry {
 func printCurrentProfile(legacy: Bool) {
     var entries = onlineDisplays().map { ProfileEntry(id: $0) }
 
-    for i in 0..<entries.count {
+    for i in 0 ..< entries.count {
         let id = entries[i].id
-        if CGDisplayIsInMirrorSet(id) != 0 && CGDisplayMirrorsDisplay(id) != 0 { // this screen is a secondary screen in a mirroring set
+        if CGDisplayIsInMirrorSet(id) != 0,
+           CGDisplayMirrorsDisplay(id) != 0 { // this screen is a secondary screen in a mirroring set
             let primaryScreenId = CGDisplayMirrorsDisplay(id)
 
-            for j in 0..<entries.count {
+            for j in 0 ..< entries.count {
                 if entries[j].id == primaryScreenId {
                     entries[j].mirrors.append(id)
                 }
@@ -99,7 +101,9 @@ func printCurrentProfile(legacy: Bool) {
     if legacy {
         print("Execute the command below to set your screens to the current arrangement:\n")
     } else {
-        print("Execute the command below to set your screens to the current arrangement. If screen ids are switching, please run `monctl --help` for info on using contextual or serial ids instead of persistent ids.\n")
+        print(
+            "Execute the command below to set your screens to the current arrangement. If screen ids are switching, please run `monctl --help` for info on using contextual or serial ids instead of persistent ids.\n"
+        )
     }
 
     var output = "monctl"
@@ -131,6 +135,7 @@ func printCurrentProfile(legacy: Bool) {
         }
 
         let bounds = CGDisplayBounds(entry.id)
+        // swiftlint:disable:next line_length
         output += " \"id:\(curScreenUUID)\(mirrors) res:\(Int(CGDisplayPixelsWide(entry.id)))x\(Int(CGDisplayPixelsHigh(entry.id))) \(hz)color_depth:\(curMode.depth) enabled:true scaling:\(scaling) origin:(\(Int(bounds.origin.x)),\(Int(bounds.origin.y))) degree:\(Int(CGDisplayRotation(entry.id)))\""
     }
     print(output)

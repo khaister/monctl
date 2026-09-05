@@ -1,8 +1,8 @@
-import CDisplayCore
 import ApplicationServices
+import CDisplayCore
 
 private func performRotation(_ screenId: CGDirectDisplayID, _ screenUUID: String, _ degree: Int) -> Bool {
-    return screenUUID.withCString { cUUID in
+    screenUUID.withCString { cUUID in
         setRotation(screenId, cUUID, Int32(degree))
     }
 }
@@ -15,7 +15,9 @@ func unsetMirrors(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
@@ -26,7 +28,9 @@ func unsetMirrors(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
         for mirrorUUID in config.mirrorUUIDs {
             let mirrorId = convertUUIDtoID(mirrorUUID)
             if !validateScreenOnline(onlineList, mirrorId, mirrorUUID, config.quietMissingScreen) {
-                if !config.quietMissingScreen { isSuccess = false }
+                if !config.quietMissingScreen {
+                    isSuccess = false
+                }
                 continue
             }
 
@@ -44,8 +48,10 @@ func unsetMirrors(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
     return isSuccess
 }
 
-func unsetMirror(_ configRef: CGDisplayConfigRef?, _ mirrorScreenId: CGDirectDisplayID, _ mirrorScreenUUID: String) -> Bool {
-    if CGDisplayIsInMirrorSet(mirrorScreenId) != 0 && CGDisplayMirrorsDisplay(mirrorScreenId) != 0 { // this screen is a secondary screen in a mirroring set
+func unsetMirror(_ configRef: CGDisplayConfigRef?, _ mirrorScreenId: CGDirectDisplayID,
+                 _ mirrorScreenUUID: String) -> Bool {
+    if CGDisplayIsInMirrorSet(mirrorScreenId) != 0,
+       CGDisplayMirrorsDisplay(mirrorScreenId) != 0 { // this screen is a secondary screen in a mirroring set
         if CGConfigureDisplayMirrorOfDisplay(configRef, mirrorScreenId, kCGNullDirectDisplay) != .success {
             eprint("Error disabling mirroring on screen \(mirrorScreenUUID)\n")
             return false
@@ -63,14 +69,18 @@ func setEnableds(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayID
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
         for mirrorUUID in config.mirrorUUIDs {
             let mirrorId = convertUUIDtoID(mirrorUUID)
             if !validateScreenOnline(onlineList, mirrorId, mirrorUUID, config.quietMissingScreen) {
-                if !config.quietMissingScreen { isSuccess = false }
+                if !config.quietMissingScreen {
+                    isSuccess = false
+                }
                 continue
             }
 
@@ -88,7 +98,8 @@ func setEnableds(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayID
     return isSuccess
 }
 
-func setEnabled(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplayID, _ screenUUID: String, _ isEnabled: Bool) -> Bool {
+func setEnabled(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplayID, _ screenUUID: String,
+                _ isEnabled: Bool) -> Bool {
     if isScreenEnabled(screenId) != isEnabled {
         if !configureDisplayEnabled(configRef, screenId, isEnabled) {
             eprint("Error setting screen \(screenUUID) to enabled:\(isEnabled ? "true" : "false")\n")
@@ -105,7 +116,9 @@ func setRotations(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
@@ -116,7 +129,9 @@ func setRotations(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
         for mirrorUUID in config.mirrorUUIDs {
             let mirrorId = convertUUIDtoID(mirrorUUID)
             if !validateScreenOnline(onlineList, mirrorId, mirrorUUID, config.quietMissingScreen) {
-                if !config.quietMissingScreen { isSuccess = false }
+                if !config.quietMissingScreen {
+                    isSuccess = false
+                }
                 continue
             }
 
@@ -135,13 +150,16 @@ func setRotations(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
     return isSuccess
 }
 
-func setMirrors(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?, onlineList: [CGDirectDisplayID]) -> Bool {
+func setMirrors(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?,
+                onlineList: [CGDirectDisplayID]) -> Bool {
     var isSuccess = true
 
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
@@ -152,7 +170,9 @@ func setMirrors(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?,
         for mirrorUUID in config.mirrorUUIDs {
             let mirrorId = convertUUIDtoID(mirrorUUID)
             if !validateScreenOnline(onlineList, mirrorId, mirrorUUID, config.quietMissingScreen) {
-                if !config.quietMissingScreen { isSuccess = false }
+                if !config.quietMissingScreen {
+                    isSuccess = false
+                }
                 continue
             }
 
@@ -163,7 +183,13 @@ func setMirrors(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?,
     return isSuccess
 }
 
-func setMirror(_ configRef: CGDisplayConfigRef?, _ primaryScreenId: CGDirectDisplayID, _ primaryScreenUUID: String, _ mirrorScreenId: CGDirectDisplayID, _ mirrorScreenUUID: String) -> Bool {
+func setMirror(
+    _ configRef: CGDisplayConfigRef?,
+    _ primaryScreenId: CGDirectDisplayID,
+    _ primaryScreenUUID: String,
+    _ mirrorScreenId: CGDirectDisplayID,
+    _ mirrorScreenUUID: String
+) -> Bool {
     if CGConfigureDisplayMirrorOfDisplay(configRef, mirrorScreenId, primaryScreenId) != .success {
         eprint("Error making the secondary screen \(mirrorScreenUUID) mirror the primary screen \(primaryScreenUUID)\n")
         return false
@@ -172,13 +198,16 @@ func setMirror(_ configRef: CGDisplayConfigRef?, _ primaryScreenId: CGDirectDisp
     return true
 }
 
-func setResolutions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?, onlineList: [CGDirectDisplayID]) -> Bool {
+func setResolutions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?,
+                    onlineList: [CGDirectDisplayID]) -> Bool {
     var isSuccess = true
 
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
@@ -186,13 +215,33 @@ func setResolutions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigR
             continue // screen is disabled, no need to apply other configs for this screen
         }
 
-        isSuccess = setResolution(configRef, id, config.uuid, width: config.width, height: config.height, hz: config.hz, depth: config.depth, scaled: config.scaled, modeNum: config.modeNum) && isSuccess
+        isSuccess = setResolution(
+            configRef,
+            id,
+            config.uuid,
+            width: config.width,
+            height: config.height,
+            hz: config.hz,
+            depth: config.depth,
+            scaled: config.scaled,
+            modeNum: config.modeNum
+        ) && isSuccess
     }
 
     return isSuccess
 }
 
-func setResolution(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplayID, _ screenUUID: String, width: Int, height: Int, hz: Int, depth: Int, scaled: Bool, modeNum: Int) -> Bool {
+func setResolution(
+    _ configRef: CGDisplayConfigRef?,
+    _ screenId: CGDirectDisplayID,
+    _ screenUUID: String,
+    width: Int,
+    height: Int,
+    hz: Int,
+    depth: Int,
+    scaled: Bool,
+    modeNum: Int
+) -> Bool {
     if modeNum != -1 { // user specified modeNum instead of height/width/hz
         _ = configureDisplayMode(configRef, screenId, Int32(modeNum))
         return true
@@ -201,7 +250,7 @@ func setResolution(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplay
     let modeCount = getDisplayModeCount(screenId)
     var modes: [DisplayMode] = []
     modes.reserveCapacity(Int(modeCount))
-    for i in 0..<modeCount {
+    for i in 0 ..< modeCount {
         modes.append(getDisplayMode(screenId, i))
     }
 
@@ -227,17 +276,30 @@ func setResolution(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplay
 /// hz/depth/scaled filters (hz==0 and depth==0 mean "any"). Among matches, prefers the
 /// highest hz, then the highest color depth. Ported from `selectBestMode` in the old
 /// src/Header.h (verified byte-identical against tests/unit/test_mode_selection.c's cases).
-func selectBestMode(_ modes: [DisplayMode], width: Int, height: Int, hz: Int, depth: Int, scaled: Bool) -> DisplayMode? {
-    var bestMode: DisplayMode? = nil
+func selectBestMode(_ modes: [DisplayMode], width: Int, height: Int, hz: Int, depth: Int,
+                    scaled: Bool) -> DisplayMode? {
+    var bestMode: DisplayMode?
 
     for curMode in modes {
         // prioritize exact matches of user input params
-        if Int(curMode.width) != width { continue }
-        if Int(curMode.height) != height { continue }
-        if hz != 0 && Int(curMode.freq) != hz { continue }
-        if depth != 0 && Int(curMode.depth) != depth { continue }
-        if scaled && curMode.density != 2.0 { continue }
-        if !scaled && curMode.density == 2.0 { continue }
+        if Int(curMode.width) != width {
+            continue
+        }
+        if Int(curMode.height) != height {
+            continue
+        }
+        if hz != 0 && Int(curMode.freq) != hz {
+            continue
+        }
+        if depth != 0 && Int(curMode.depth) != depth {
+            continue
+        }
+        if scaled && curMode.density != 2.0 {
+            continue
+        }
+        if !scaled && curMode.density == 2.0 {
+            continue
+        }
 
         if bestMode == nil {
             bestMode = curMode
@@ -251,13 +313,20 @@ func selectBestMode(_ modes: [DisplayMode], width: Int, height: Int, hz: Int, de
     return bestMode
 }
 
-func setPositions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef?, onlineList: [CGDirectDisplayID], screenCount: Int) -> Bool {
+func setPositions(
+    _ screenConfigs: [ScreenConfig],
+    configRef: CGDisplayConfigRef?,
+    onlineList: [CGDirectDisplayID],
+    screenCount: Int
+) -> Bool {
     var isSuccess = true
 
     for config in screenConfigs {
         let id = convertUUIDtoID(config.uuid)
         if !validateScreenOnline(onlineList, id, config.uuid, config.quietMissingScreen) {
-            if !config.quietMissingScreen { isSuccess = false }
+            if !config.quietMissingScreen {
+                isSuccess = false
+            }
             continue
         }
 
@@ -268,7 +337,7 @@ func setPositions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef
         let curOrigin = CGDisplayBounds(id).origin
         // setting a screen to its current origin makes monctl hang for a couple seconds. If there is
         // only one screen, macOS will force the origin to be (0,0) so we do not need to set it.
-        if (Int(curOrigin.x) != config.x || Int(curOrigin.y) != config.y) && screenCount > 1 {
+        if Int(curOrigin.x) != config.x || Int(curOrigin.y) != config.y, screenCount > 1 {
             isSuccess = setPosition(configRef, id, config.uuid, config.x, config.y) && isSuccess
         }
     }
@@ -276,7 +345,13 @@ func setPositions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigRef
     return isSuccess
 }
 
-func setPosition(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplayID, _ screenUUID: String, _ x: Int, _ y: Int) -> Bool {
+func setPosition(
+    _ configRef: CGDisplayConfigRef?,
+    _ screenId: CGDirectDisplayID,
+    _ screenUUID: String,
+    _ x: Int,
+    _ y: Int
+) -> Bool {
     if CGConfigureDisplayOrigin(configRef, screenId, Int32(x), Int32(y)) != .success {
         eprint("Error moving screen \(screenUUID) to \(x)x\(y)\n")
         return false

@@ -6,6 +6,20 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftFormat and SwiftLint
+        run: brew install swiftformat swiftlint
+
+      - name: Check formatting
+        run: swiftformat --lint .
+
+      - name: Run SwiftLint
+        run: swiftlint lint
+
   test:
     runs-on: macos-latest
     steps:

@@ -25,7 +25,7 @@ func uuidString(for display: CGDirectDisplayID) -> String {
 }
 
 func isScreenEnabled(_ screenId: CGDirectDisplayID) -> Bool {
-    return CGDisplayIsActive(screenId) != 0 || CGDisplayIsInMirrorSet(screenId) != 0
+    CGDisplayIsActive(screenId) != 0 || CGDisplayIsInMirrorSet(screenId) != 0
 }
 
 func convertUUIDtoID(_ uuid: String) -> CGDirectDisplayID {
@@ -57,13 +57,18 @@ func convertSerialToID(_ serialIdString: String) -> CGDirectDisplayID {
     return 0
 }
 
-func validateScreenOnline(_ onlineDisplayList: [CGDirectDisplayID], _ screenId: CGDirectDisplayID, _ screenUUID: String, _ quietMissingScreen: Bool) -> Bool {
+func validateScreenOnline(
+    _ onlineDisplayList: [CGDirectDisplayID],
+    _ screenId: CGDirectDisplayID,
+    _ screenUUID: String,
+    _ quietMissingScreen: Bool
+) -> Bool {
     if onlineDisplayList.contains(screenId) {
         return true
     }
 
     if !quietMissingScreen {
-        eprint("Unable to find screen \(screenUUID) - skipping changes for that screen\n") // TODO only print once per screen
+        eprint("Unable to find screen \(screenUUID) - skipping changes for that screen\n") // TODO: only print once per screen
     }
     return false
 }

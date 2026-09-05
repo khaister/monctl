@@ -4,7 +4,7 @@ enum ArgumentParser {
     /// Ports MonCtl.c's `main()` argument-parsing loop: each element of
     /// `propGroups` is one screen's `key:value key:value ...` string.
     static func parse(_ propGroups: [String]) -> [ScreenConfig] {
-        return propGroups.map { parseOne($0) }
+        propGroups.map { parseOne($0) }
     }
 
     private static func parseOne(_ propGroup: String) -> ScreenConfig {
@@ -26,7 +26,9 @@ enum ArgumentParser {
                 for (j, mirrorUUID) in idParts.dropFirst().enumerated() {
                     mirrorUUIDs.append(mirrorUUID)
                     if j + 1 > mirrorMax {
-                        eprint("Current code only supports 128 screens mirroring. Please open a GitHub issue at https://github.com/khaister/monctl if you need this raised.\n")
+                        eprint(
+                            "Current code only supports 128 screens mirroring. Please open a GitHub issue at https://github.com/khaister/monctl if you need this raised.\n"
+                        )
                     }
                 }
                 config.mirrorUUIDs = mirrorUUIDs
