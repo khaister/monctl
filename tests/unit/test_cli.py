@@ -17,7 +17,7 @@ import re
 import subprocess
 import sys
 
-BINARY = os.path.join(os.path.dirname(__file__), '..', '..', 'src', 'monctl')
+BINARY = os.environ.get('MONCTL_BINARY', os.path.join(os.path.dirname(__file__), '..', '..', '.build', 'debug', 'monctl'))
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
 FAKE_CONTEXTUAL_ID = '999999'
 FAKE_SERIAL_ID = 's999999999'
@@ -146,7 +146,7 @@ def test_missing_resolution_on_a_real_screen():
 
 def main():
     if not os.path.exists(BINARY):
-        print(f'monctl binary not found at {BINARY} - build it first (make -C src)')
+        print(f'monctl binary not found at {BINARY} - build it first (swift build)')
         sys.exit(1)
 
     test_help()

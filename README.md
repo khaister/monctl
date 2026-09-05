@@ -11,9 +11,9 @@ Build from source:
 
 ```sh
 git clone https://github.com/khaister/monctl.git
-cd monctl/src
-make
-make install
+cd monctl
+swift build -c release
+sudo cp .build/release/monctl /usr/local/bin/monctl
 ```
 
 ## Usage
