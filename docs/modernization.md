@@ -41,6 +41,23 @@ This proposal is grounded in the [Command Line Interface Guidelines](https://cli
 - **xrandr already solved the "one resolution, many refresh rates" problem.** Its mode listing prints each resolution once, then lists its supported refresh rates indented underneath it, rather than repeating the resolution per rate. Worth adopting directly rather than re-deriving.
 - **xrandr also solved raw-coordinate placement.** Rather than requiring users to compute pixel offsets by hand, xrandr provides relative placement flags — `--right-of`, `--left-of`, `--above`, `--below`, `--same-as` (mirroring) — alongside a raw `--pos <x>x<y>` for cases the relative flags cannot express. This mirrors clig.dev's general guidance on flags: give the common case a legible name, and keep the raw primitive available for advanced use.
 
+### 2.1 Feature and UX comparison: monctl (proposed) vs xrandr
+
+xrandr is a good model for flag design but a weaker model for output/scripting ergonomics, which is why this proposal borrows the former and adds `--json`/`profile` on top rather than matching xrandr 1:1:
+
+| Aspect | xrandr | monctl (proposed) |
+| --- | --- | --- |
+| Command structure | Single flat command, no subcommands; multi-screen changes are repeated `--output` blocks in one invocation | Subcommands (`list`, `set`, `profile`) with verb/noun grouping, per the subcommand-discoverability guidance above |
+| Screen identifiers | Real port names (`eDP-1`, `HDMI-1`, `DP-2`) | Three id types — persistent, contextual, serial — because macOS exposes no single stable identifier (§4.3) |
+| Mode listing | Each resolution printed once, refresh rates indented underneath, current marked `*`, preferred `+` | Same compact-then-detailed shape: `list` shows only the current mode, `--long` adds the full indented per-resolution mode list (§4.3) |
+| Relative placement | `--left-of`, `--right-of`, `--above`, `--below`, `--same-as`, computed from output geometry; `--pos <x>x<y>` for raw coordinates | Adopts the same flags directly, plus `--origin x,y` for the advanced/raw case (§4.2) |
+| Machine-readable output | None built-in; scripts parse `xrandr --query` text | `--json` on `list`/`profile show`/`profile list`, always full-fidelity regardless of `--long` (§4.3, §5) |
+| Saved layouts | None; users hardcode flags per layout in their own shell scripts | First-class `profile save`/`apply`/`list`/`show`/`rm`/`edit`, stored as JSON under XDG config (§4.1) |
+| Dry-run / confirmation | None | `--dry-run` on `set` and `profile apply` (§4.1; whether to make it the default is an open question in §6) |
+| Disabling a screen | `--off` | `--enabled true|false` |
+| Filtering mode queries | None — always dumps every mode for the output | `--long --screen <id> --resolution WxH` narrows to one screen's or one resolution's hz/depth/scaling combos (§4.3) |
+| Shell completion | Standard flag parsing; no dedicated subcommand | `monctl completion <shell>` |
+
 ## 3. Goals
 
 1. Preserve the workflow users actually rely on — applying a full multi-screen layout in one operation — as a first-class, named concept rather than a copy-pasted string.
