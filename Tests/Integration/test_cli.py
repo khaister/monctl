@@ -50,13 +50,12 @@ def test_help():
     check('--help exits 0', code == 0)
     check('--help mentions Usage:', 'Usage:' in output)
     check('--help mentions Instructions:', 'Instructions:' in output)
-    check('--help mentions Feedback:', 'Feedback:' in output)
 
 
 def test_no_args_prints_help():
     output, code = run()
     check('no args exits 0', code == 0)
-    check('no args prints the same help as --help', 'Usage:' in output and 'Feedback:' in output)
+    check('no args prints the same help as --help', 'Usage:' in output and 'Instructions:' in output)
 
 
 def test_version():

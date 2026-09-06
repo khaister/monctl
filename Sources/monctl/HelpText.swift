@@ -38,9 +38,6 @@ Notes:
     - The first screenId in a mirroring set will be the 'Optimize for' screen in the system prefs. You can only choose resolutions for the 'Optimize for' screen. If there is a mirroring resolution you need but cannot find, try making a different screenId the first of the set.
     - hz and color_depth are optional. If left out, the highest hz and then the highest color_depth will be auto applied.
     - screenId is optional if there is only one screen. Rule of thumb is that monctl is expecting the entire profile config per screen though, so this may be buggy.
-
-Feedback:
-    Please create a GitHub Issue for any feedback, feature requests, bugs, Homebrew issues, etc. Happy to accept pull requests too! https://github.com/khaister/monctl
 """
 
 let versionText = "v2026.09.05.1"
