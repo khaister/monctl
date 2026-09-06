@@ -62,8 +62,7 @@ def test_no_args_prints_help():
 def test_version():
     output, code = run('--version')
     check('--version exits 0', code == 0)
-    check('--version mentions monctl v', 'monctl v' in output)
-    check('--version mentions the GitHub repo', 'github.com/khaister/monctl' in output)
+    check('--version prints just a CalVer tag (vYYYY.MM.DD.N)', re.fullmatch(r'v\d{4}\.\d{2}\.\d{2}\.\d+', output.strip()) is not None)
 
 
 def test_list_smoke():
