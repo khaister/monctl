@@ -99,11 +99,3 @@ You can mix and match screenId types across your setup:
 > ```sh
 > monctl "id:<screenId> enabled:true"
 > ```
-
-## Backward Compatibility
-
-> [!NOTE]
-> `monctl list` output changed slightly in v1.4.0 (inherited from displayplacer). If this broke your scripts, use:
-> ```sh
-> monctl list --v1.3.0
-> ```
