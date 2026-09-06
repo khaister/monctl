@@ -2,7 +2,7 @@
 @testable import monctl
 import Testing
 
-/// Ports tests/unit/test_mode_selection.c's cases against the Swift `selectBestMode`
+/// Ports Tests/Unit/test_mode_selection.c's cases against the Swift `selectBestMode`
 /// (moved out of C's src/Header.h during the Swift port - see .claude/plans/swift-port).
 private func makeMode(_ mode: Int32, _ width: Int32, _ height: Int32, _ depth: Int32, _ freq: Int32,
                       _ density: Float) -> DisplayMode {

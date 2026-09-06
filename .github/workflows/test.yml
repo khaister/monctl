@@ -32,4 +32,4 @@ jobs:
         run: swift test
 
       - name: Run hardware-independent CLI tests
-        run: MONCTL_BINARY=.build/debug/monctl python3 tests/unit/test_cli.py
+        run: MONCTL_BINARY=.build/debug/monctl python3 Tests/Integration/test_cli.py

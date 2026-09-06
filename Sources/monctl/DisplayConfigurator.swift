@@ -275,7 +275,7 @@ func setResolution(
 /// Finds the mode in `modes` that best matches the required width/height and optional
 /// hz/depth/scaled filters (hz==0 and depth==0 mean "any"). Among matches, prefers the
 /// highest hz, then the highest color depth. Ported from `selectBestMode` in the old
-/// src/Header.h (verified byte-identical against tests/unit/test_mode_selection.c's cases).
+/// src/Header.h (verified byte-identical against Tests/Unit/test_mode_selection.c's cases).
 func selectBestMode(_ modes: [DisplayMode], width: Int, height: Int, hz: Int, depth: Int,
                     scaled: Bool) -> DisplayMode? {
     var bestMode: DisplayMode?

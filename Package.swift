@@ -31,7 +31,7 @@ let package = Package(
         .testTarget(
             name: "monctlTests",
             dependencies: ["monctl"],
-            path: "tests/unit/swift"
+            path: "Tests/Unit"
         ),
     ]
 )

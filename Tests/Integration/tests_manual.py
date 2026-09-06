@@ -2,7 +2,7 @@
 """Manual, hardware-dependent regression suite for monctl.
 
 Run this BY HAND against your own real monitor setup. It is NOT part of CI -
-see tests/unit/ for the suite that runs there. This discovers whatever
+see Tests/Unit/ for the suite that runs there. This discovers whatever
 screens are actually connected via `monctl list` and adapts its
 scenarios to however many are present, instead of assuming a specific
 topology - previous versions of this file hardcoded UUIDs from the original
@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 
-BINARY = '../.build/debug/monctl'
+BINARY = '../../.build/debug/monctl'
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
 
 failures = []

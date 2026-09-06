@@ -10,7 +10,7 @@ This does NOT verify that a valid config is actually applied correctly to a
 real screen (e.g. that a legacy `res:WxHxHz` string parses to the right
 width/height/hz) - only that the CLI handles the input without crashing and
 reaches the expected code path. Actually applying configs is covered by
-tests/tests_manual.py, run by hand against real hardware.
+Tests/Integration/tests_manual.py, run by hand against real hardware.
 """
 import os
 import re
