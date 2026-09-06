@@ -201,7 +201,9 @@ Would apply profile "docked":
   - Errors are red, warnings are yellow.
   - `set` and `profile apply --dry-run` color their diff like `git diff` does: the old value dim/red, the new value green (e.g. `rotate 0 -> 90` with `0` dim and `90` green), since that's the one output a user is specifically scanning for "what's about to change."
   - Colors use the 8 standard ANSI SGR codes, not 256-color/truecolor escapes, and avoid the bold/bright variants. A plain ANSI color name (`red`, `green`, `cyan`, `yellow`) is a request to the terminal, not a fixed RGB value — the terminal's own theme decides the actual shade, which is what keeps these readable against both dark and light backgrounds without monctl special-casing either. A hardcoded hex/truecolor red or a bright/bold variant instead risks low contrast against a light-theme background (e.g. bright yellow on white) that monctl has no way to detect or correct for.
-  - See [an example rendering](colored-output-example.svg) of this scheme under both a dark and a light terminal theme.
+  - Example rendering of this scheme under both a dark and a light terminal theme:
+
+    ![Example colored monctl output in dark and light terminal themes](colored-output-example.svg)
 
 ## 6. Open questions
 
