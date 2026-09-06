@@ -47,10 +47,8 @@ func convertUUIDtoID(_ uuid: String) -> CGDirectDisplayID {
 func convertSerialToID(_ serialIdString: String) -> CGDirectDisplayID {
     let serialId = UInt32(bitPattern: Int32(catoi(String(serialIdString.dropFirst())))) // "s4123456789" -> 4123456789
 
-    for curScreen in onlineDisplays() {
-        if CGDisplaySerialNumber(curScreen) == serialId {
-            return curScreen
-        }
+    for curScreen in onlineDisplays() where CGDisplaySerialNumber(curScreen) == serialId {
+        return curScreen
     }
 
     eprint("Error converting serialId \(serialIdString) to a screenId\n")
@@ -68,7 +66,7 @@ func validateScreenOnline(
     }
 
     if !quietMissingScreen {
-        eprint("Unable to find screen \(screenUUID) - skipping changes for that screen\n") // TODO: only print once per screen
+        eprint("Unable to find screen \(screenUUID) - skipping changes for that screen\n")
     }
     return false
 }

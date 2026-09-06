@@ -41,6 +41,7 @@ func listScreens() {
 
         var rotationLine = "Rotation: \(Int(CGDisplayRotation(curScreen)))"
         if CGDisplayIsBuiltin(curScreen) != 0 {
+            // swiftlint:disable:next line_length
             rotationLine += " - rotate internal screen example (may crash computer, but will be rotated after rebooting): `monctl \"id:\(curScreenUUID) degree:90\"`"
         }
         print(rotationLine)
@@ -84,10 +85,8 @@ func printCurrentProfile() {
            CGDisplayMirrorsDisplay(id) != 0 { // this screen is a secondary screen in a mirroring set
             let primaryScreenId = CGDisplayMirrorsDisplay(id)
 
-            for j in 0 ..< entries.count {
-                if entries[j].id == primaryScreenId {
-                    entries[j].mirrors.append(id)
-                }
+            for j in 0 ..< entries.count where entries[j].id == primaryScreenId {
+                entries[j].mirrors.append(id)
             }
 
             entries[i].isMirrorOfAnother = true
@@ -95,6 +94,7 @@ func printCurrentProfile() {
     }
 
     print(
+        // swiftlint:disable:next line_length
         "Execute the command below to set your screens to the current arrangement. If screen ids are switching, please run `monctl --help` for info on using contextual or serial ids instead of persistent ids.\n"
     )
 

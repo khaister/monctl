@@ -49,15 +49,18 @@ struct Apply: ParsableCommand {
             isSuccess // Enable/disable screens and call CGCompleteDisplayConfiguration as a prereq to applying other
         // config.
         isSuccess = unsetMirrors(screenConfigs, onlineList: onlineList) &&
-            isSuccess // Disable all mirroring prior and call CGCompleteDisplayConfiguration as a prereq to ensure displays
+            isSuccess // Disable all mirroring prior and call CGCompleteDisplayConfiguration as a prereq to ensure
+        // displays
         // are in a known starting state.
         isSuccess = setRotations(screenConfigs, onlineList: onlineList) &&
-            isSuccess // Set all display rotations as a prereq so the portrait or landscape resolutions can be found when
+            isSuccess // Set all display rotations as a prereq so the portrait or landscape resolutions can be found
+        // when
         // setting the resolutions. Also, disable mirroring after each rotation alteration since macOS will often times
         // oddly auto-enable mirroring when a screen is rotated.
 
         var configRef: CGDisplayConfigRef?
-        CGBeginDisplayConfiguration(&configRef) // Share a configRef for the remainder of the program since these configs do
+        CGBeginDisplayConfiguration(&configRef) // Share a configRef for the remainder of the program since these
+        // configs do
         // not interrupt each other. This reduces the number of screen flashes when running monctl.
         isSuccess = setMirrors(screenConfigs, configRef: configRef, onlineList: onlineList) && isSuccess
         isSuccess = setResolutions(screenConfigs, configRef: configRef, onlineList: onlineList) && isSuccess

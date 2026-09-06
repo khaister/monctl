@@ -215,17 +215,7 @@ func setResolutions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigR
             continue // screen is disabled, no need to apply other configs for this screen
         }
 
-        isSuccess = setResolution(
-            configRef,
-            id,
-            config.uuid,
-            width: config.width,
-            height: config.height,
-            hz: config.hz,
-            depth: config.depth,
-            scaled: config.scaled,
-            modeNum: config.modeNum
-        ) && isSuccess
+        isSuccess = setResolution(configRef, id, config.uuid, config) && isSuccess
     }
 
     return isSuccess
@@ -235,15 +225,10 @@ func setResolution(
     _ configRef: CGDisplayConfigRef?,
     _ screenId: CGDirectDisplayID,
     _ screenUUID: String,
-    width: Int,
-    height: Int,
-    hz: Int,
-    depth: Int,
-    scaled: Bool,
-    modeNum: Int
+    _ config: ScreenConfig
 ) -> Bool {
-    if modeNum != -1 { // user specified modeNum instead of height/width/hz
-        _ = configureDisplayMode(configRef, screenId, Int32(modeNum))
+    if config.modeNum != -1 { // user specified modeNum instead of height/width/hz
+        _ = configureDisplayMode(configRef, screenId, Int32(config.modeNum))
         return true
     }
 
@@ -254,19 +239,26 @@ func setResolution(
         modes.append(getDisplayMode(screenId, i))
     }
 
-    if let bestMode = selectBestMode(modes, width: width, height: height, hz: hz, depth: depth, scaled: scaled) {
+    if let bestMode = selectBestMode(
+        modes,
+        width: config.width,
+        height: config.height,
+        hz: config.hz,
+        depth: config.depth,
+        scaled: config.scaled
+    ) {
         _ = configureDisplayMode(configRef, screenId, bestMode.mode)
         return true
     }
 
-    var message = "Screen ID \(screenUUID): could not find res:\(width)x\(height)"
-    if hz != 0 {
-        message += " hz:\(hz)"
+    var message = "Screen ID \(screenUUID): could not find res:\(config.width)x\(config.height)"
+    if config.hz != 0 {
+        message += " hz:\(config.hz)"
     }
-    if depth != 0 {
-        message += " color_depth:\(depth)"
+    if config.depth != 0 {
+        message += " color_depth:\(config.depth)"
     }
-    message += " scaling:\(scaled ? "on" : "off")\n"
+    message += " scaling:\(config.scaled ? "on" : "off")\n"
     eprint(message)
 
     return false
