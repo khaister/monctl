@@ -1,9 +1,5 @@
 # monctl Documentation
 
-Entry point for using and contributing to monctl.
-
-## Background
-
 `monctl` is a fork of [displayplacer](https://github.com/jakehilborn/displayplacer) by Jake Hilborn, being renamed and modernized. All credit for the original design and implementation goes to that project.
 
 ## For users
