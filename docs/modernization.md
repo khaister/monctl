@@ -196,7 +196,12 @@ Would apply profile "docked":
 - All data is written to stdout; status messages (e.g. "Applied: ...", "Saved profile ...") and all errors are written to stderr.
 - Errors are a single line, prefixed `Error:`, phrased in plain language, with a suggested fix when one can be inferred: `Error: no screen matches id "abc123". Run 'monctl list' to see available ids.`
 - Exit codes: `0` on success, `1` on generic failure, `2` on a usage/parse error — matching [swift-argument-parser](https://github.com/apple/swift-argument-parser)'s existing default behavior.
-- Color is used only for emphasis (screen ids, errors, warnings) and is disabled automatically when stdout is not a TTY or when `NO_COLOR`/`--no-color` is set.
+- Color is used only for emphasis, never as the sole conveyor of information, and is disabled automatically when stdout is not a TTY or when `NO_COLOR`/`--no-color` is set:
+  - Screen ids in `list`/`list --long` are cyan, since the id is the primary key a user copies into a follow-up `set`/`profile` command.
+  - Errors are red, warnings are yellow.
+  - `set` and `profile apply --dry-run` color their diff like `git diff` does: the old value dim/red, the new value green (e.g. `rotate 0 -> 90` with `0` dim and `90` green), since that's the one output a user is specifically scanning for "what's about to change."
+  - Colors use the 8 standard ANSI SGR codes, not 256-color/truecolor escapes, and avoid the bold/bright variants. A plain ANSI color name (`red`, `green`, `cyan`, `yellow`) is a request to the terminal, not a fixed RGB value — the terminal's own theme decides the actual shade, which is what keeps these readable against both dark and light backgrounds without monctl special-casing either. A hardcoded hex/truecolor red or a bright/bold variant instead risks low contrast against a light-theme background (e.g. bright yellow on white) that monctl has no way to detect or correct for.
+  - See [an example rendering](colored-output-example.svg) of this scheme under both a dark and a light terminal theme.
 
 ## 6. Open questions
 
