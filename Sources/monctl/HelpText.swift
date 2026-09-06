@@ -43,4 +43,4 @@ Feedback:
     Please create a GitHub Issue for any feedback, feature requests, bugs, Homebrew issues, etc. Happy to accept pull requests too! https://github.com/khaister/monctl
 """
 
-let versionText = "v2026.09.05.0"
+let versionText = "v2026.09.05.1"
