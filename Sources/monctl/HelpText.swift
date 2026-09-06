@@ -40,4 +40,4 @@ Notes:
     - screenId is optional if there is only one screen. Rule of thumb is that monctl is expecting the entire profile config per screen though, so this may be buggy.
 """
 
-let versionText = "v2026.09.05.1"
+let versionText = "v2026.09.05.2"
