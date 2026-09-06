@@ -4,6 +4,9 @@ import PackageDescription
 let package = Package(
     name: "monctl",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+    ],
     targets: [
         .target(
             name: "CDisplayCore",
@@ -25,7 +28,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "monctl",
-            dependencies: ["CDisplayCore"],
+            dependencies: [
+                "CDisplayCore",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
             path: "Sources/monctl"
         ),
         .testTarget(
