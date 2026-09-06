@@ -7,7 +7,13 @@ macOS command line utility to configure multi-display resolutions and arrangemen
 
 ## Download
 
-Build from source:
+Install via Homebrew:
+
+```sh
+brew install khaister/tap/monctl
+```
+
+Or build from source:
 
 ```sh
 git clone https://github.com/khaister/monctl.git
