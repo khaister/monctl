@@ -4,7 +4,7 @@
 
 ## Summary
 
-monctl inherited its command-line interface unchanged from displayplacer: a single positional argument encoding a small `key:value` domain-specific language (DSL). This document proposes replacing that interface with a conventional flag- and subcommand-based CLI, informed by established CLI design guidelines, while preserving the workflows monctl's users actually rely on. monctl has no existing users, so the redesign is not constrained by backward compatibility.
+monctl inherited its command-line interface unchanged from [displayplacer](https://github.com/jakehilborn/displayplacer): a single positional argument encoding a small `key:value` domain-specific language (DSL). This document proposes replacing that interface with a conventional flag- and subcommand-based CLI, informed by established CLI design guidelines, while preserving the workflows monctl's users actually rely on. monctl has no existing users, so the redesign is not constrained by backward compatibility.
 
 ## 1. Background and problem statement
 
@@ -19,14 +19,14 @@ This design has several concrete problems:
 - **Not discoverable.** There are no real flags — everything is packed into a string the user has to already know how to write. Shell completion is impossible, since the shell only ever sees one opaque argument.
 - **Fragile syntax.** Quoting, spacing, and `+`-joined mirror IDs are easy to get wrong; mistakes surface as parser errors rather than pointing at the offending token.
 - **No machine-readable output.** `monctl list` prints prose intended for a human to copy back into another `monctl` invocation. There is no `--json`, so scripting against it means regex-parsing display output.
-- **Help text is undifferentiated.** `HelpText.swift` is a single discussion string covering usage, setup instructions, screen-id caveats, and notes all at once, rather than the layered short-help/long-help/docs structure tools like `git` or `gh` use.
+- **Help text is undifferentiated.** `HelpText.swift` is a single discussion string covering usage, setup instructions, screen-id caveats, and notes all at once, rather than the layered short-help/long-help/docs structure tools like [`git`](https://git-scm.com/) or [`gh`](https://cli.github.com/) use.
 - **Error handling is ad hoc.** Errors are printed via a bespoke `eprint` helper with a bare exit code; there is no consistent message shape, no suggested fixes, and no per-screen error attribution beyond a `quiet:true` flag.
-- **The one real "profile" workflow is copy-pasted string.** The README instructs users to run `monctl list`, copy the printed args, and paste them into Automator or BetterTouchTool hotkeys. This is the primary daily workflow for most users, and it is implemented as string copying rather than as a first-class concept.
+- **The one real "profile" workflow is copy-pasted string.** The README instructs users to run `monctl list`, copy the printed args, and paste them into [Automator](https://support.apple.com/guide/automator/welcome/mac) or [BetterTouchTool](https://folivora.ai/) hotkeys. This is the primary daily workflow for most users, and it is implemented as string copying rather than as a first-class concept.
 - **`list` output is unbounded.** [ScreenLister.swift:51-68](../Sources/monctl/ScreenLister.swift#L51-L68) unconditionally prints every display mode for every screen. A HiDPI external monitor commonly reports 30-60+ resolution/hz/depth/scaling combinations, so with two or three screens attached, `monctl list` output runs well past 100 lines, with the one line of interest (the current mode) buried in the middle.
 
 ## 2. Prior art and research
 
-This proposal is grounded in the [Command Line Interface Guidelines](https://clig.dev) and the [Heroku CLI style guide](https://devcenter.heroku.com/articles/cli-style-guide), plus conventions established by `git`, `docker`, `kubectl`, `gh`, and `xrandr` (the tool monctl's own README describes it as the macOS equivalent of). The points most relevant to monctl:
+This proposal is grounded in the [Command Line Interface Guidelines](https://clig.dev) and the [Heroku CLI style guide](https://devcenter.heroku.com/articles/cli-style-guide), plus conventions established by [`git`](https://git-scm.com/), [`docker`](https://www.docker.com/), [`kubectl`](https://kubernetes.io/docs/reference/kubectl/), [`gh`](https://cli.github.com/), and [`xrandr`](https://www.x.org/releases/X11R7.7/doc/man/man1/xrandr.1.xhtml) (the tool monctl's own README describes it as the macOS equivalent of). The points most relevant to monctl:
 
 - **Prefer flags over positional DSLs.** Flags are self-documenting, order independent, and completable. Positional arguments are appropriate only for single, obvious values (`cp src dst`), not for encoding an entire config object as a string.
 - **Human-readable output by default; machine-readable output opt-in.** Default output should read well in a terminal. A `--json` flag (and often `--plain`/`--terse`) should give scripts something stable to parse instead of scraping prose.
@@ -34,10 +34,10 @@ This proposal is grounded in the [Command Line Interface Guidelines](https://cli
 - **Use subcommands for discoverability**, with consistent verb/noun ordering and no ambiguous overlapping names. Heroku's `topic:command` convention and git's `noun verb` convention both work; the important part is consistency.
 - **Separate stdout and stderr.** Primary output (data) goes to stdout; status, progress, and errors go to stderr. Exit 0 on success, non-zero on failure, always.
 - **Rewrite errors for humans**, and suggest a fix where one can be inferred (e.g. "no screen matches id `abc123` — run `monctl list` to see available ids") rather than surfacing a raw parser failure.
-- **Respect `NO_COLOR` and detect TTY**, disabling color and animation when output is piped.
+- **Respect [`NO_COLOR`](https://no-color.org) and detect TTY**, disabling color and animation when output is piped.
 - **Maintain appropriate information density.** clig.dev states this directly: "A command is saying too much when it dumps pages and pages of debugging output." It recommends piping long output through a pager (`less`), and gating detail that's "only understandable by the creators of the software" behind a verbose or opt-in flag rather than printing it unconditionally. This applies directly to the `list` mode-dump problem in §1 — the fix is a compact default with detail available on request, not the removal of that detail.
 - **Confirm or dry-run operations with real consequences.** Changing display configuration can black out a screen or disconnect the one the user is working on; clig.dev classifies this as the kind of moderate-danger operation that warrants a `--dry-run` or preview step.
-- **Default to grep-parseable columns, not a table-rendering library.** Heroku's guide recommends a column-aligned table a human can scan and a script can still `grep`/`awk`, with `--json` as the escape hatch for anything structured. This is a formatting convention, not a dependency — it does not require a TUI/table framework (e.g. Python's Textual) to implement, and monctl remaining a single static binary with no runtime dependencies is worth preserving.
+- **Default to grep-parseable columns, not a table-rendering library.** Heroku's guide recommends a column-aligned table a human can scan and a script can still `grep`/`awk`, with `--json` as the escape hatch for anything structured. This is a formatting convention, not a dependency — it does not require a TUI/table framework (e.g. Python's [Textual](https://github.com/Textualize/textual)) to implement, and monctl remaining a single static binary with no runtime dependencies is worth preserving.
 - **xrandr already solved the "one resolution, many refresh rates" problem.** Its mode listing prints each resolution once, then lists its supported refresh rates indented underneath it, rather than repeating the resolution per rate. Worth adopting directly rather than re-deriving.
 - **xrandr also solved raw-coordinate placement.** Rather than requiring users to compute pixel offsets by hand, xrandr provides relative placement flags — `--right-of`, `--left-of`, `--above`, `--below`, `--same-as` (mirroring) — alongside a raw `--pos <x>x<y>` for cases the relative flags cannot express. This mirrors clig.dev's general guidance on flags: give the common case a legible name, and keep the raw primitive available for advanced use.
 
@@ -45,7 +45,7 @@ This proposal is grounded in the [Command Line Interface Guidelines](https://cli
 
 1. Preserve the workflow users actually rely on — applying a full multi-screen layout in one operation — as a first-class, named concept rather than a copy-pasted string.
 2. Express single-screen adjustments (rotate one screen, change its resolution) as real flags rather than a hand-written DSL fragment.
-3. Provide scripts and hotkey tools (Automator, BetterTouchTool, Raycast) a stable `--json` output and a stable way to invoke a saved layout, instead of requiring a string embedded in the hotkey configuration.
+3. Provide scripts and hotkey tools (Automator, BetterTouchTool, [Raycast](https://www.raycast.com/)) a stable `--json` output and a stable way to invoke a saved layout, instead of requiring a string embedded in the hotkey configuration.
 
 monctl has no existing users, so none of the above is constrained by backward compatibility: the legacy positional DSL can be dropped outright rather than retained as a compatibility shim.
 
@@ -89,7 +89,7 @@ monctl completion <shell>          # shell completion script (free from swift-ar
 
 **Rationale for splitting `set` (one screen) from `profile apply` (a whole layout):** the current single-string design conflates two distinct operations — adjusting one screen, and restoring an entire desk arrangement. Flags suit the former; a saved, named, structured layout suits the latter far better than one large quoted string. This also replaces the README's current guidance to copy-paste `monctl list` output into a hotkey tool: a hotkey would instead invoke `monctl profile apply docked`.
 
-Profiles would be stored as JSON under `~/.config/monctl/profiles/<name>.json` (XDG-style), human-editable, and diffable in a dotfiles repository — an improvement over an opaque one-line string embedded in an Automator action.
+Profiles would be stored as JSON under `~/.config/monctl/profiles/<name>.json` ([XDG-style](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html)), human-editable, and diffable in a dotfiles repository — an improvement over an opaque one-line string embedded in an Automator action.
 
 ### 4.2 Positioning: relative flags by default, raw origin for advanced cases
 
@@ -178,7 +178,7 @@ Would apply profile "docked":
 - `list` defaults to a compact table (common fields, current mode only); `--long` adds the rarely-needed fields (alternate screen ids, exact depth) and the full per-mode dump, piped through `$PAGER` (falling back to `less`) when writing to a TTY, per the information-density guidance in §2. `--long` also accepts `--screen <id>` and `--resolution WxH` to filter the dump down to one screen and/or one resolution's hz/depth/scaling combos, using the same flag names `set` takes.
 - All data is written to stdout; status messages (e.g. "Applied: ...", "Saved profile ...") and all errors are written to stderr.
 - Errors are a single line, prefixed `Error:`, phrased in plain language, with a suggested fix when one can be inferred: `Error: no screen matches id "abc123". Run 'monctl list' to see available ids.`
-- Exit codes: `0` on success, `1` on generic failure, `2` on a usage/parse error — matching swift-argument-parser's existing default behavior.
+- Exit codes: `0` on success, `1` on generic failure, `2` on a usage/parse error — matching [swift-argument-parser](https://github.com/apple/swift-argument-parser)'s existing default behavior.
 - Color is used only for emphasis (screen ids, errors, warnings) and is disabled automatically when stdout is not a TTY or when `NO_COLOR`/`--no-color` is set.
 
 ## 6. Open questions
