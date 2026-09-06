@@ -63,31 +63,31 @@
     BOOL _isAppleProDisplay;
 }
 
-@property(readonly) BOOL hasRotationSensor; // @synthesize hasRotationSensor=_hasRotationSensor;
+@property(readonly) BOOL hasRotationSensor;   // @synthesize hasRotationSensor=_hasRotationSensor;
 @property(retain) MPDisplayMode *defaultMode; // @synthesize defaultMode=_defaultMode;
-@property(retain) MPDisplayMode *nativeMode; // @synthesize nativeMode=_nativeMode;
+@property(retain) MPDisplayMode *nativeMode;  // @synthesize nativeMode=_nativeMode;
 @property(retain) MPDisplayMode *currentMode; // @synthesize currentMode=_currentMode;
-@property(readonly) BOOL hasZeroRate; // @synthesize hasZeroRate=_hasZeroRate;
-@property(readonly) BOOL hasMultipleRates; // @synthesize hasMultipleRates=_hasMultipleRates;
-@property(readonly) BOOL isSidecarDisplay; // @synthesize isSidecarDisplay=_isSidecarDisplay;
-@property(readonly) BOOL isAirPlayDisplay; // @synthesize isAirPlayDisplay=_isAirPlayDisplay;
-@property(readonly) BOOL isProjector; // @synthesize isProjector=_isProjector;
-@property(readonly) BOOL is4K; // @synthesize is4K=_is4K;
-@property(readonly) BOOL isTV; // @synthesize isTV=_isTV;
-@property(readonly) BOOL isMirrorMaster; // @synthesize isMirrorMaster=_isMirrorMaster;
-@property(readonly) BOOL isMirrored; // @synthesize isMirrored=_isMirrored;
-@property(readonly) BOOL isBuiltIn; // @synthesize isBuiltIn=_isBuiltIn;
-@property(readonly) BOOL isHiDPI; // @synthesize isHiDPI=_isHiDPI;
-@property(readonly) BOOL hasTVModes; // @synthesize hasTVModes=_hasTVModes;
-@property(readonly) BOOL hasSimulscan; // @synthesize hasSimulscan=_hasSimulscan;
-@property(readonly) BOOL hasSafeMode; // @synthesize hasSafeMode=_hasSafeMode;
-@property(readonly) BOOL isSmartDisplay; // @synthesize isSmartDisplay=_isSmartDisplay;
-@property(nonatomic) int orientation; // @synthesize orientation=_orientation;
-@property unsigned int userFlags; // @synthesize userFlags=_userFlags;
-@property(readonly) int aliasID; // @synthesize aliasID=_aliasID;
-@property(readonly) int displayID; // @synthesize displayID=_displayID;
+@property(readonly) BOOL hasZeroRate;         // @synthesize hasZeroRate=_hasZeroRate;
+@property(readonly) BOOL hasMultipleRates;    // @synthesize hasMultipleRates=_hasMultipleRates;
+@property(readonly) BOOL isSidecarDisplay;    // @synthesize isSidecarDisplay=_isSidecarDisplay;
+@property(readonly) BOOL isAirPlayDisplay;    // @synthesize isAirPlayDisplay=_isAirPlayDisplay;
+@property(readonly) BOOL isProjector;         // @synthesize isProjector=_isProjector;
+@property(readonly) BOOL is4K;                // @synthesize is4K=_is4K;
+@property(readonly) BOOL isTV;                // @synthesize isTV=_isTV;
+@property(readonly) BOOL isMirrorMaster;      // @synthesize isMirrorMaster=_isMirrorMaster;
+@property(readonly) BOOL isMirrored;          // @synthesize isMirrored=_isMirrored;
+@property(readonly) BOOL isBuiltIn;           // @synthesize isBuiltIn=_isBuiltIn;
+@property(readonly) BOOL isHiDPI;             // @synthesize isHiDPI=_isHiDPI;
+@property(readonly) BOOL hasTVModes;          // @synthesize hasTVModes=_hasTVModes;
+@property(readonly) BOOL hasSimulscan;        // @synthesize hasSimulscan=_hasSimulscan;
+@property(readonly) BOOL hasSafeMode;         // @synthesize hasSafeMode=_hasSafeMode;
+@property(readonly) BOOL isSmartDisplay;      // @synthesize isSmartDisplay=_isSmartDisplay;
+@property(nonatomic) int orientation;         // @synthesize orientation=_orientation;
+@property unsigned int userFlags;             // @synthesize userFlags=_userFlags;
+@property(readonly) int aliasID;              // @synthesize aliasID=_aliasID;
+@property(readonly) int displayID;            // @synthesize displayID=_displayID;
 - (BOOL)setActivePreset:(MPDisplayPreset *)arg1;
-@property(readonly) NSArray<MPDisplayPreset*> *presets;
+@property(readonly) NSArray<MPDisplayPreset *> *presets;
 @property(readonly) BOOL hasPresets;
 @property(readonly) MPDisplayPreset *defaultPreset;
 - (void)buildPresetsList;
@@ -151,6 +151,5 @@
 @property(retain, nonatomic) NSString *displayName;
 - (void)dealloc;
 - (id)initWithCGSDisplayID:(int)arg1;
-
 
 @end

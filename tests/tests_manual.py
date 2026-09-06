@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 
-BINARY = '../src/monctl'
+BINARY = '../.build/debug/monctl'
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
 
 failures = []

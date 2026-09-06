@@ -1,6 +1,4 @@
-monctl
-monctl.dSYM/
-tests/unit/test_mode_selection
+.build/
 
 .DS_Store
 

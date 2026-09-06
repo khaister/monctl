@@ -6,16 +6,30 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftFormat and SwiftLint
+        run: brew install swiftformat swiftlint
+
+      - name: Check formatting
+        run: swiftformat --lint .
+
+      - name: Run SwiftLint
+        run: swiftlint lint
+
   test:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
 
       - name: Build monctl
-        run: make -C src
+        run: swift build
 
-      - name: Run C unit tests (mode selection)
-        run: make -C src test
+      - name: Run Swift unit tests (mode selection)
+        run: swift test
 
       - name: Run hardware-independent CLI tests
-        run: python3 tests/unit/test_cli.py
+        run: MONCTL_BINARY=.build/debug/monctl python3 tests/unit/test_cli.py

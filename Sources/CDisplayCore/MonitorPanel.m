@@ -1,6 +1,9 @@
-#include "Headers/Bridging-Header.h"
+#import "MPDisplay.h"
+#include "include/CDisplayCore.h"
+#include <time.h>
+#include <stdio.h>
 
-bool setRotation(CGDirectDisplayID screenId, char* screenUUID, int degree) {
+bool setRotation(CGDirectDisplayID screenId, const char* screenUUID, int degree) {
     bool isSuccess = true;
 
     MPDisplay* mpDisplay = [[MPDisplay alloc] initWithCGSDisplayID:screenId];
