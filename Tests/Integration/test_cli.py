@@ -70,15 +70,8 @@ def test_list_smoke():
     output, code = run('list')
     check('list exits 0', code == 0)
     check('list mentions Persistent screen id', 'Persistent screen id:' in output)
-    check('list mentions Serial screen id (v1.4.0+ format)', 'Serial screen id:' in output)
+    check('list mentions Serial screen id', 'Serial screen id:' in output)
     check('list prints a reconstructed monctl command', 'monctl "id:' in output)
-
-
-def test_list_legacy_format_smoke():
-    output, code = run('list', '--v1.3.0')
-    check('list --v1.3.0 exits 0', code == 0)
-    check('list --v1.3.0 mentions Persistent screen id', 'Persistent screen id:' in output)
-    check('list --v1.3.0 omits Serial screen id (pre-v1.4.0 format)', 'Serial screen id:' not in output)
 
 
 def test_missing_screen_persistent_id():
@@ -153,7 +146,6 @@ def main():
     test_no_args_prints_help()
     test_version()
     test_list_smoke()
-    test_list_legacy_format_smoke()
     test_missing_screen_persistent_id()
     test_missing_screen_contextual_id()
     test_missing_screen_serial_id()

@@ -2,9 +2,7 @@ import ApplicationServices
 import CDisplayCore
 import Foundation
 
-/// `legacy` selects the `--v1.3.0` formatting: drop the "Serial screen id" line
-/// (added in v1.4.0) and the extra help sentence in printCurrentProfile.
-func listScreens(legacy: Bool) {
+func listScreens() {
     for curScreen in onlineDisplays() {
         let curModeId = getCurrentDisplayModeIndex(curScreen)
         let curMode = getDisplayMode(curScreen, curModeId)
@@ -12,9 +10,7 @@ func listScreens(legacy: Bool) {
 
         print("Persistent screen id: \(curScreenUUID)")
         print("Contextual screen id: \(curScreen)")
-        if !legacy {
-            print("Serial screen id: s\(CGDisplaySerialNumber(curScreen))")
-        }
+        print("Serial screen id: s\(CGDisplaySerialNumber(curScreen))")
 
         if CGDisplayIsBuiltin(curScreen) != 0 {
             print("Type: MacBook built in screen")
@@ -79,7 +75,7 @@ private struct ProfileEntry {
     var isMirrorOfAnother = false
 }
 
-func printCurrentProfile(legacy: Bool) {
+func printCurrentProfile() {
     var entries = onlineDisplays().map { ProfileEntry(id: $0) }
 
     for i in 0 ..< entries.count {
@@ -98,13 +94,9 @@ func printCurrentProfile(legacy: Bool) {
         }
     }
 
-    if legacy {
-        print("Execute the command below to set your screens to the current arrangement:\n")
-    } else {
-        print(
-            "Execute the command below to set your screens to the current arrangement. If screen ids are switching, please run `monctl --help` for info on using contextual or serial ids instead of persistent ids.\n"
-        )
-    }
+    print(
+        "Execute the command below to set your screens to the current arrangement. If screen ids are switching, please run `monctl --help` for info on using contextual or serial ids instead of persistent ids.\n"
+    )
 
     var output = "monctl"
     for entry in entries {
