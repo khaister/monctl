@@ -1,7 +1,41 @@
 import Foundation
 
+#if canImport(Glibc)
+    import Glibc
+#else
+    import Darwin
+#endif
+
+/// `eprint`/`printError`/`printWarning` check only the raw `NO_COLOR` env var, not the full
+/// `Settings.current.noColor` (which also folds in the config file) - `printWarning` is itself
+/// called while `Settings.current` is still being resolved (a bad config file, or an unknown
+/// `$MONCTL_LIST_LONG_FIELDS` entry, both warn from inside that resolution), and reading
+/// `Settings.current` from within its own initializer would deadlock/crash.
+private func stderrColorForceDisabled() -> Bool {
+    ProcessInfo.processInfo.environment["NO_COLOR"] != nil
+}
+
+/// Writes `s` to stderr, colored red per §5's "errors are red" convention.
 func eprint(_ s: String) {
-    FileHandle.standardError.write(s.data(using: .utf8)!)
+    let colored = colorize(
+        s,
+        .red,
+        enabled: colorEnabled(forceDisabled: stderrColorForceDisabled(), fd: fileno(stderr))
+    )
+    FileHandle.standardError.write(colored.data(using: .utf8)!)
+}
+
+/// A single-line, `Error: `-prefixed message per §5, with an optional suggested fix.
+func printError(_ message: String) {
+    eprint("Error: \(message)\n")
+}
+
+/// A single-line, yellow warning - used for recoverable per-screen issues (e.g. a missing
+/// screen that other screens in the same operation can still proceed without).
+func printWarning(_ message: String) {
+    let ce = colorEnabled(forceDisabled: stderrColorForceDisabled(), fd: fileno(stderr))
+    let colored = colorize("Warning: \(message)", .yellow, enabled: ce)
+    FileHandle.standardError.write((colored + "\n").data(using: .utf8)!)
 }
 
 /// Splits a string like `strtok_r` would with a set of single-character
@@ -24,16 +58,6 @@ func tokenize(_ s: String, delimiters: Set<Character>) -> [String] {
         tokens.append(current)
     }
     return tokens
-}
-
-/// Splits `s` into the part before the first occurrence of `delimiter` and
-/// the part after it (nil if `delimiter` doesn't appear) - matching a single
-/// `strtok_r(s, ":", &savePtr)` call followed by one more.
-func splitFirst(_ s: String, on delimiter: Character) -> (String, String?) {
-    if let idx = s.firstIndex(of: delimiter) {
-        return (String(s[s.startIndex ..< idx]), String(s[s.index(after: idx)...]))
-    }
-    return (s, nil)
 }
 
 /// C `atoi()`: skip leading whitespace, an optional sign, then digits: stop

@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """Hardware-independent, CI-safe black-box tests for the monctl CLI.
 
-Every case here either never touches CoreGraphics (--help/--version) or is
-built on a deliberately nonexistent screen id/resolution, so it fails cleanly
-before touching real display state - these behave identically on any
-machine, including a CI runner with just a virtual display.
+Every case here either never touches CoreGraphics (--help/--version/profile bookkeeping) or is
+built on a deliberately nonexistent screen id, so it fails cleanly before touching real display
+state - these behave identically on any machine, including a CI runner with just a virtual
+display.
 
-This does NOT verify that a valid config is actually applied correctly to a
-real screen (e.g. that a legacy `res:WxHxHz` string parses to the right
-width/height/hz) - only that the CLI handles the input without crashing and
-reaches the expected code path. Actually applying configs is covered by
+This does NOT verify that a valid config is actually applied correctly to a real screen (e.g.
+that `set --resolution` picks the right mode) - only that the CLI handles the input without
+crashing and reaches the expected code path. Actually applying configs is covered by
 Tests/Integration/tests_manual.py, run by hand against real hardware.
 """
+import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 BINARY = os.environ.get('MONCTL_BINARY', os.path.join(os.path.dirname(__file__), '..', '..', '.build', 'debug', 'monctl'))
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
@@ -25,8 +27,11 @@ FAKE_SERIAL_ID = 's999999999'
 failures = []
 
 
-def run(*args):
-    result = subprocess.run([BINARY, *args], capture_output=True, text=True)
+def run(*args, env=None):
+    full_env = {**os.environ, 'NO_COLOR': '1'}
+    if env:
+        full_env.update(env)
+    result = subprocess.run([BINARY, *args], capture_output=True, text=True, env=full_env)
     return result.stdout + result.stderr, result.returncode
 
 
@@ -37,25 +42,31 @@ def check(desc, cond):
         failures.append(desc)
 
 
-def discover_first_screen_uuid():
-    output, code = run('list')
+def discover_first_screen_id():
+    output, code = run('list', '--json')
     if code != 0:
         return None
-    match = re.search(r'Persistent screen id: (\S+)', output)
-    return match.group(1) if match else None
+    try:
+        screens = json.loads(output)
+    except json.JSONDecodeError:
+        return None
+    return screens[0]['persistentID'] if screens else None
 
 
 def test_help():
     output, code = run('--help')
     check('--help exits 0', code == 0)
-    check('--help mentions Usage:', 'Usage:' in output)
-    check('--help mentions Instructions:', 'Instructions:' in output)
+    check('--help mentions USAGE', 'USAGE' in output)
+    check('--help lists the list/set/profile/completion subcommands', all(
+        f'\n  {name}' in output.replace('\n\n', '\n') or f'  {name} ' in output
+        for name in ('list', 'set', 'profile', 'completion')
+    ))
 
 
 def test_no_args_prints_help():
     output, code = run()
     check('no args exits 0', code == 0)
-    check('no args prints the same help as --help', 'Usage:' in output and 'Instructions:' in output)
+    check('no args prints the same help as --help', 'USAGE' in output)
 
 
 def test_version():
@@ -67,91 +78,266 @@ def test_version():
 def test_list_smoke():
     output, code = run('list')
     check('list exits 0', code == 0)
-    check('list mentions Persistent screen id', 'Persistent screen id:' in output)
-    check('list mentions Serial screen id', 'Serial screen id:' in output)
-    check('list prints a reconstructed monctl command', 'monctl "id:' in output)
+    check('list prints a header row', 'RESOLUTION' in output and 'ENABLED' in output)
 
 
-def test_missing_screen_persistent_id():
-    output, code = run(f'id:{FAKE_UUID} res:1920x1080')
-    check('missing persistent screen id reports the error', f'Unable to find screen {FAKE_UUID}' in output)
-    check('missing persistent screen id exits 1', code == 1)
+def test_list_json_smoke():
+    output, code = run('list', '--json')
+    check('list --json exits 0', code == 0)
+    try:
+        screens = json.loads(output)
+        check('list --json prints a JSON array', isinstance(screens, list))
+        check('list --json entries have a persistentID', all('persistentID' in s for s in screens))
+        # dict preserves insertion order (Python 3.7+), and json.loads doesn't reorder it, so
+        # this reflects the actual key order in the JSON text.
+        check('list --json puts modes last in every entry', all(list(s.keys())[-1] == 'modes' for s in screens))
+    except json.JSONDecodeError:
+        check('list --json prints valid JSON', False)
 
 
-def test_missing_screen_contextual_id():
-    output, code = run(f'id:{FAKE_CONTEXTUAL_ID} res:1920x1080')
-    check('missing contextual screen id reports the error', f'Unable to find screen {FAKE_CONTEXTUAL_ID}' in output)
-    check('missing contextual screen id exits 1', code == 1)
+def test_list_json_key_order_is_deterministic():
+    # This JSONEncoder's default (non-`.sortedKeys`) key order is NOT declaration/encode-call
+    # order, it's effectively random per process - list --json works around this by hand for its
+    # scalar/modes split (see ScreenInfoJSON.swift). Confirm two separate invocations agree.
+    first, code1 = run('list', '--json')
+    second, code2 = run('list', '--json')
+    check('list --json exits 0 on repeated runs', code1 == 0 and code2 == 0)
+    check('list --json key order is identical across separate invocations', first == second)
 
 
-def test_missing_screen_serial_id():
-    output, code = run(f'id:{FAKE_SERIAL_ID} res:1920x1080')
-    check('missing serial screen id reports the conversion error', f'Error converting serialId {FAKE_SERIAL_ID}' in output)
-    check('missing serial screen id reports the not-found error', f'Unable to find screen {FAKE_SERIAL_ID}' in output)
-    check('missing serial screen id exits 1', code == 1)
-
-
-def test_quiet_suppresses_missing_screen_error():
-    output, code = run(f'id:{FAKE_UUID} res:1920x1080 quiet:true')
-    check('quiet:true suppresses the missing-screen message', 'Unable to find screen' not in output)
-    check('quiet:true still exits 0', code == 0)
-
-
-def test_malformed_key_is_rejected():
-    output, code = run('zzz:invalid')
-    check('unknown key reports a parsing error', 'Argument parsing error' in output)
-    check('unknown key exits 1', code == 1)
-
-
-def test_mode_targeting_syntax_is_parsed():
-    # mode:N on a nonexistent screen still hits the same missing-screen path,
-    # which is the only way to exercise the parser without touching a real
-    # screen's actual mode table.
-    output, code = run(f'id:{FAKE_UUID} mode:5')
-    check('mode:N syntax parses and reaches the missing-screen path', f'Unable to find screen {FAKE_UUID}' in output)
-    check('mode:N on missing screen exits 1', code == 1)
-
-
-def test_legacy_res_format_is_parsed():
-    # Legacy 3-part `res:WxHxHz` on a nonexistent screen - same caveat as above:
-    # this only proves the parser doesn't crash on the legacy format, not that
-    # it extracts the right width/height/hz (needs a real matching screen).
-    output, code = run(f'id:{FAKE_UUID} res:1440x900x60')
-    check('legacy res:WxHxHz parses and reaches the missing-screen path', f'Unable to find screen {FAKE_UUID}' in output)
-    check('legacy res:WxHxHz on missing screen exits 1', code == 1)
-
-
-def test_missing_resolution_on_a_real_screen():
-    # The one case that needs a real screen id to even reach the resolution
-    # lookup - but any screen works, and 99999x99999 doesn't exist on any
-    # real or virtual display, so this is safe and portable across machines.
-    screen_uuid = discover_first_screen_uuid()
-    if not screen_uuid:
-        print('SKIP: missing-resolution test (no screen discovered via `list`)')
+def test_list_long_shows_persistent_id():
+    output, code = run('list', '--long')
+    check('list --long exits 0', code == 0)
+    if 'Screen ' not in output:
+        print('SKIP: list --long persistent-id test (no screen discovered)')
         return
+    check('list --long shows Persistent id', 'Persistent id ' in output)
+    check(
+        'Persistent id appears before Contextual id',
+        0 <= output.find('Persistent id') < output.find('Contextual id'),
+    )
 
-    output, code = run(f'id:{screen_uuid} res:99999x99999')
-    check('impossible resolution on a real screen reports the error', f'Screen ID {screen_uuid}: could not find res:99999x99999' in output)
+
+def test_list_long_missing_screen():
+    output, code = run('list', '--long', '--screen', FAKE_UUID)
+    check('list --long --screen with a missing id reports the error', f'no screen matches id "{FAKE_UUID}"' in output)
+    check('list --long --screen with a missing id exits 1', code == 1)
+
+
+def test_set_missing_screen():
+    output, code = run('set', '--screen', FAKE_UUID, '--rotate', '90')
+    check('set on a missing persistent id reports the error', f'no screen matches id "{FAKE_UUID}"' in output)
+    check('set on a missing persistent id exits 1', code == 1)
+
+
+def test_set_missing_screen_contextual():
+    output, code = run('set', '--screen', FAKE_CONTEXTUAL_ID, '--rotate', '90')
+    check('set on a missing contextual id reports the error', f'no screen matches id "{FAKE_CONTEXTUAL_ID}"' in output)
+    check('set on a missing contextual id exits 1', code == 1)
+
+
+def test_set_missing_screen_serial():
+    output, code = run('set', '--screen', FAKE_SERIAL_ID, '--rotate', '90')
+    check('set on a missing serial id reports the conversion error', f'could not convert serial id "{FAKE_SERIAL_ID}"' in output)
+    check('set on a missing serial id exits 1', code == 1)
+
+
+def test_set_quiet_suppresses_missing_screen_error():
+    output, code = run('set', '--screen', FAKE_UUID, '--rotate', '90', '--quiet')
+    check('set --quiet suppresses the missing-screen message', 'no screen matches' not in output)
+    check('set --quiet still exits 0', code == 0)
+
+
+def test_set_rejects_bad_scaling():
+    output, code = run('set', '--screen', FAKE_UUID, '--scaling', 'sideways')
+    check('set --scaling rejects a non on/off value', '--scaling must be' in output)
+    check('set --scaling with a bad value exits 64 (usage error)', code == 64)
+
+
+def test_set_rejects_bad_rotation():
+    output, code = run('set', '--screen', FAKE_UUID, '--rotate', '45')
+    check('set --rotate rejects a value outside 0/90/180/270', '--rotate must be' in output)
+    check('set --rotate with a bad value exits 64 (usage error)', code == 64)
+
+
+def test_set_rejects_multiple_positioning_flags():
+    output, code = run('set', '--screen', FAKE_UUID, '--origin', '0,0', '--right-of', FAKE_UUID)
+    check('set rejects --origin combined with --right-of', 'only one of' in output)
+    check('set with conflicting positioning flags exits 64 (usage error)', code == 64)
+
+
+def test_set_right_of_missing_reference():
+    real_id = discover_first_screen_id()
+    if not real_id:
+        print('SKIP: set --right-of missing-reference test (no screen discovered via `list --json`)')
+        return
+    output, code = run('set', '--screen', real_id, '--right-of', FAKE_UUID, '--dry-run')
+    check('set --right-of a missing reference screen reports the error', f'no screen matches id "{FAKE_UUID}"' in output)
+    check('set --right-of a missing reference screen exits 1', code == 1)
+
+
+def test_set_dry_run_on_a_real_screen_is_a_no_op():
+    real_id = discover_first_screen_id()
+    if not real_id:
+        print('SKIP: set --dry-run test (no screen discovered via `list --json`)')
+        return
+    output, code = run('set', '--screen', real_id, '--rotate', '0', '--dry-run')
+    check('set --dry-run on an unchanged rotation reports no changes', 'No changes.' in output)
+    check('set --dry-run exits 0', code == 0)
+
+
+def test_set_missing_resolution_on_a_real_screen():
+    real_id = discover_first_screen_id()
+    if not real_id:
+        print('SKIP: missing-resolution test (no screen discovered via `list --json`)')
+        return
+    output, code = run('set', '--screen', real_id, '--resolution', '99999x99999', '--dry-run')
+    check('impossible resolution on a real screen reports the error', 'no mode on screen' in output and '99999x99999' in output)
     check('impossible resolution on a real screen exits 1', code == 1)
+
+
+def test_list_long_config_override():
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = os.path.join(config_home, 'monctl')
+        os.makedirs(config_dir)
+        config_path = os.path.join(config_dir, 'config.json')
+        env = {'XDG_CONFIG_HOME': config_home}
+
+        with open(config_path, 'w') as f:
+            json.dump({'listLongFields': [
+                {'key': 'type'},
+                {'key': 'depth', 'label': 'Depth'},
+            ]}, f)
+        output, code = run('list', '--long', env=env)
+        check('list --long config override exits 0', code == 0)
+        check('list --long config override hides fields left out of listLongFields', 'Serial id' not in output)
+        check('list --long config override renames a label', 'Depth ' in output and 'Color Depth' not in output)
+
+        with open(config_path, 'w') as f:
+            f.write('{ not json')
+        output, code = run('list', '--long', env=env)
+        check('list --long with a malformed config warns instead of failing', 'could not parse' in output)
+        check('list --long with a malformed config still exits 0 (falls back to defaults)', code == 0)
+        check('list --long falls back to default fields on a bad config', 'Color Depth' in output)
+
+        # pager/disablePager only change behavior when stdout is a TTY, which subprocess.run()
+        # never is - so this only proves the config keys parse cleanly, not that paging is
+        # actually skipped/redirected. That needs a real pty to verify (done by hand).
+        with open(config_path, 'w') as f:
+            json.dump({'pager': 'cat', 'disablePager': True}, f)
+        output, code = run('list', '--long', env=env)
+        check('list --long parses pager/disablePager config keys without error', code == 0)
+        check('list --long output is unaffected by pager config on a non-TTY stdout', 'Color Depth' in output)
+
+
+def test_env_overrides_config_file():
+    """Every config.json key has an environment variable counterpart, and when both are set the
+    environment variable wins (see docs/usage.md's Configuration section). listLongFields is the
+    setting whose precedence is observable here without touching real display state or a TTY.
+    profileApplyNoConfirm's precedence needs a real (non-dry-run) `profile apply` to observe -
+    that's covered in tests_manual.py instead, matching this file's screen-state-safe scope (see
+    module docstring). pager/disablePager/noColor/editor only change TTY-dependent behavior, so
+    those are covered by test_list_long_config_override's "parses without error" check plus
+    manual pty verification.
+    """
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = os.path.join(config_home, 'monctl')
+        os.makedirs(config_dir)
+        config_path = os.path.join(config_dir, 'config.json')
+
+        with open(config_path, 'w') as f:
+            json.dump({'listLongFields': [{'key': 'type'}]}, f)
+        output, code = run('list', '--long', env={
+            'XDG_CONFIG_HOME': config_home,
+            'MONCTL_LIST_LONG_FIELDS': 'hz',
+        })
+        check('$MONCTL_LIST_LONG_FIELDS overrides listLongFields when both are set', code == 0)
+        check('  -> the env var\'s field is used', 'Hz ' in output)
+        check('  -> the config file\'s field is not', 'Type ' not in output)
+
+
+def test_profile_lifecycle():
+    """Profiles are just files, so this is safe on CI: no real screen config is touched by
+    save (a read-only snapshot) or list/show/rm (pure file operations) - only `profile apply`
+    (not exercised here) would."""
+    with tempfile.TemporaryDirectory() as config_home:
+        env = {'XDG_CONFIG_HOME': config_home}
+        name = 'ci-test-profile'
+
+        output, code = run('profile', 'save', name, env=env)
+        check('profile save exits 0', code == 0)
+        check('profile save reports the saved path', f'Saved profile "{name}"' in output)
+
+        output, code = run('profile', 'list', env=env)
+        check('profile list shows the saved profile', name in output)
+
+        output, code = run('profile', 'show', name, '--json', env=env)
+        check('profile show --json exits 0', code == 0)
+        try:
+            configs = json.loads(output)
+            check('profile show --json prints a JSON array', isinstance(configs, list))
+        except json.JSONDecodeError:
+            check('profile show --json prints valid JSON', False)
+
+        output, code = run('profile', 'apply', name, '--dry-run', env=env)
+        check('profile apply --dry-run exits 0', code == 0)
+        check('profile apply --dry-run prints a would-apply header', f'Would apply profile "{name}"' in output)
+
+        output, code = run('profile', 'rm', name, env=env)
+        check('profile rm exits 0', code == 0)
+        check('profile rm confirms removal', f'Removed profile "{name}"' in output)
+
+        output, code = run('profile', 'show', name, env=env)
+        check('profile show after rm reports the error', f'no profile named "{name}"' in output)
+        check('profile show after rm exits 1', code == 1)
+
+
+def test_profile_apply_missing_profile():
+    output, code = run('profile', 'apply', 'no-such-profile-xyz')
+    check('profile apply on a missing profile reports the error', 'no profile named "no-such-profile-xyz"' in output)
+    check('profile apply on a missing profile exits 1', code == 1)
+
+
+def test_completion():
+    output, code = run('completion', 'zsh')
+    check('completion zsh exits 0', code == 0)
+    check('completion zsh prints a zsh completion script', '#compdef monctl' in output)
+
+    output, code = run('completion', 'nonexistent-shell')
+    check('completion with an unknown shell reports the error', 'unsupported shell' in output)
+    check('completion with an unknown shell exits 1', code == 1)
 
 
 def main():
     if not os.path.exists(BINARY):
         print(f'monctl binary not found at {BINARY} - build it first (swift build)')
         sys.exit(1)
+    if shutil.which('less') is None:
+        print('note: `less` not found on PATH - list --long paging fallback is untested here')
 
     test_help()
     test_no_args_prints_help()
     test_version()
     test_list_smoke()
-    test_missing_screen_persistent_id()
-    test_missing_screen_contextual_id()
-    test_missing_screen_serial_id()
-    test_quiet_suppresses_missing_screen_error()
-    test_malformed_key_is_rejected()
-    test_mode_targeting_syntax_is_parsed()
-    test_legacy_res_format_is_parsed()
-    test_missing_resolution_on_a_real_screen()
+    test_list_json_smoke()
+    test_list_json_key_order_is_deterministic()
+    test_list_long_shows_persistent_id()
+    test_list_long_missing_screen()
+    test_set_missing_screen()
+    test_set_missing_screen_contextual()
+    test_set_missing_screen_serial()
+    test_set_quiet_suppresses_missing_screen_error()
+    test_set_rejects_bad_scaling()
+    test_set_rejects_bad_rotation()
+    test_set_rejects_multiple_positioning_flags()
+    test_set_right_of_missing_reference()
+    test_set_dry_run_on_a_real_screen_is_a_no_op()
+    test_set_missing_resolution_on_a_real_screen()
+    test_list_long_config_override()
+    test_env_overrides_config_file()
+    test_profile_lifecycle()
+    test_profile_apply_missing_profile()
+    test_completion()
 
     if failures:
         print(f'\n{len(failures)} check(s) failed:')

@@ -1,0 +1,59 @@
+<svg width="1400" height="480" viewBox="0 0 1400 480" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <rect width="1400" height="480" fill="#f3f4f6"/>
+
+  <text x="700" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#1a1a1a" font-family="ui-sans-serif, system-ui, sans-serif">Example colored output</text>
+
+  <!-- Dark theme panel -->
+  <text x="40" y="75" font-size="15" font-weight="600" fill="#333" font-family="ui-sans-serif, system-ui, sans-serif">Dark theme</text>
+  <rect x="40" y="90" width="620" height="320" rx="8" fill="#282c34" stroke="#000" stroke-opacity="0.35"/>
+  <rect x="40" y="90" width="620" height="28" rx="8" fill="#21252b"/>
+  <rect x="40" y="104" width="620" height="14" fill="#21252b"/>
+  <circle cx="56" cy="104" r="5" fill="#ff5f56"/>
+  <circle cx="72" cy="104" r="5" fill="#ffbd2e"/>
+  <circle cx="88" cy="104" r="5" fill="#27c93f"/>
+
+  <g font-size="13" fill="#abb2bf">
+    <text x="56" y="140">$ monctl list --long</text>
+    <text x="56" y="158">Screen <tspan fill="#56b6c2">37D8...</tspan> (main)</text>
+    <text x="56" y="176">&#160;&#160;Resolution: 2056x1329&#160;&#160;Hz: 120&#160;&#160;Depth: 8&#160;&#160;Scaling: on</text>
+    <text x="56" y="194">&#160;&#160;Origin: (0,0)&#160;&#160;Rotation: 0&#160;&#160;Enabled: true</text>
+
+    <text x="56" y="230">$ monctl set --screen <tspan fill="#56b6c2">A420...</tspan> --rotate 90 --left-of <tspan fill="#56b6c2">37D8...</tspan> --dry-run</text>
+    <text x="56" y="248">Would apply:</text>
+    <text x="56" y="266">&#160;&#160;Screen 2: rotate <tspan fill="#e06c75" fill-opacity="0.55">0</tspan> -&gt; <tspan fill="#98c379">90</tspan>, origin <tspan fill="#e06c75" fill-opacity="0.55">(1920,0)</tspan> -&gt; <tspan fill="#98c379">(0,0)</tspan></text>
+
+    <text x="56" y="302"><tspan fill="#e06c75">Error:</tspan> no screen matches id &quot;abc123&quot;. Run 'monctl list' to see available ids.</text>
+    <text x="56" y="320"><tspan fill="#e5c07b">Warning:</tspan> screen <tspan fill="#56b6c2">A420...</tspan> is not currently attached</text>
+
+    <text x="56" y="356">$ </text>
+    <rect x="70" y="344" width="7" height="14" fill="#abb2bf"/>
+  </g>
+
+  <!-- Light theme panel -->
+  <text x="740" y="75" font-size="15" font-weight="600" fill="#333" font-family="ui-sans-serif, system-ui, sans-serif">Light theme</text>
+  <rect x="740" y="90" width="620" height="320" rx="8" fill="#fafafa" stroke="#d0d0d0"/>
+  <rect x="740" y="90" width="620" height="28" rx="8" fill="#eaeaeb"/>
+  <rect x="740" y="104" width="620" height="14" fill="#eaeaeb"/>
+  <circle cx="756" cy="104" r="5" fill="#ff5f56"/>
+  <circle cx="772" cy="104" r="5" fill="#ffbd2e"/>
+  <circle cx="788" cy="104" r="5" fill="#27c93f"/>
+
+  <g font-size="13" fill="#383a42">
+    <text x="756" y="140">$ monctl list --long</text>
+    <text x="756" y="158">Screen <tspan fill="#0184bc">37D8...</tspan> (main)</text>
+    <text x="756" y="176">&#160;&#160;Resolution: 2056x1329&#160;&#160;Hz: 120&#160;&#160;Depth: 8&#160;&#160;Scaling: on</text>
+    <text x="756" y="194">&#160;&#160;Origin: (0,0)&#160;&#160;Rotation: 0&#160;&#160;Enabled: true</text>
+
+    <text x="756" y="230">$ monctl set --screen <tspan fill="#0184bc">A420...</tspan> --rotate 90 --left-of <tspan fill="#0184bc">37D8...</tspan> --dry-run</text>
+    <text x="756" y="248">Would apply:</text>
+    <text x="756" y="266">&#160;&#160;Screen 2: rotate <tspan fill="#e45649" fill-opacity="0.6">0</tspan> -&gt; <tspan fill="#50a14f">90</tspan>, origin <tspan fill="#e45649" fill-opacity="0.6">(1920,0)</tspan> -&gt; <tspan fill="#50a14f">(0,0)</tspan></text>
+
+    <text x="756" y="302"><tspan fill="#e45649">Error:</tspan> no screen matches id &quot;abc123&quot;. Run 'monctl list' to see available ids.</text>
+    <text x="756" y="320"><tspan fill="#c18401">Warning:</tspan> screen <tspan fill="#0184bc">A420...</tspan> is not currently attached</text>
+
+    <text x="756" y="356">$ </text>
+    <rect x="770" y="344" width="7" height="14" fill="#383a42"/>
+  </g>
+
+  <text x="700" y="452" text-anchor="middle" font-size="13" fill="#555" font-family="ui-sans-serif, system-ui, sans-serif">Same ANSI color names — red, green, yellow, cyan — the terminal's own theme picks the shade for each.</text>
+</svg>
