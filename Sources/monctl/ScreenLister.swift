@@ -34,7 +34,7 @@ struct List: ParsableCommand {
 
         if json {
             let infos = screenIDs.map { gatherScreenInfo($0, includeModes: true) }
-            try printJSON(infos)
+            print(renderScreenInfosJSON(infos))
             return
         }
 
@@ -56,7 +56,7 @@ struct List: ParsableCommand {
     }
 
     private func printCompact(_ screenIDs: [CGDirectDisplayID]) {
-        let ce = colorEnabled(noColor: colorOptions.noColor, fd: fileno(stdout))
+        let ce = colorEnabled(forceDisabled: colorOptions.resolvedNoColor, fd: fileno(stdout))
         let infos = screenIDs.map { gatherScreenInfo($0, includeModes: false) }
 
         let headers = ["ID", "MAIN", "TYPE", "RESOLUTION", "HZ", "SCALING", "ORIGIN", "ROTATE", "ENABLED"]
@@ -90,8 +90,9 @@ struct List: ParsableCommand {
         }
 
         let resolutionFilter = try parsedResolutionFilter()
-        let blocks = infos.map { renderLongBlock($0, resolutionFilter: resolutionFilter) }
-        pageOutput(blocks.joined(separator: "\n\n"))
+        let settings = Settings.current
+        let blocks = infos.map { renderLongBlock($0, fields: settings.longFields, resolutionFilter: resolutionFilter) }
+        pageOutput(blocks.joined(separator: "\n\n"), pager: settings.pager, disablePager: settings.disablePager)
     }
 }
 
@@ -115,17 +116,17 @@ private func groupModes(_ modes: [ScreenModeInfo]) -> [ModeGroup] {
     return order.compactMap { groups[$0] }.sorted { $0.width * $0.height > $1.width * $1.height }
 }
 
-private func renderLongBlock(_ info: ScreenInfo, resolutionFilter: (width: Int, height: Int)?) -> String {
+private func renderLongBlock(
+    _ info: ScreenInfo,
+    fields: [LongFieldConfig],
+    resolutionFilter: (width: Int, height: Int)?
+) -> String {
     var lines: [String] = []
     lines.append("Screen \(info.persistentID)\(info.isMain ? " (main)" : "")")
-    lines.append("  Contextual id: \(info.contextualID)")
-    lines.append("  Serial id: \(info.serialID)")
-    lines.append("  Type: \(info.typeDescription)")
-    lines.append(
-        "  Resolution: \(info.width)x\(info.height)  Hz: \(info.hz != 0 ? "\(info.hz)" : "N/A")  " +
-            "Depth: \(info.depth)  Scaling: \(info.scaling ? "on" : "off")"
-    )
-    lines.append("  Origin: (\(info.originX),\(info.originY))  Rotation: \(info.rotation)  Enabled: \(info.enabled)")
+
+    let pairs = fields.map { field in (label: field.resolvedLabel(), value: field.key.value(for: info)) }
+    lines.append(contentsOf: renderMenuLines(pairs, indent: "  "))
+
     lines.append("  Modes:")
 
     var groups = groupModes(info.modes)
@@ -149,6 +150,26 @@ private func renderLongBlock(_ info: ScreenInfo, resolutionFilter: (width: Int, 
     }
 
     return lines.joined(separator: "\n")
+}
+
+/// Renders `label`/`value` pairs as dot-leader "menu" lines - `Label ..... value` - with labels
+/// left-aligned and values right-aligned to the same column, like a restaurant menu. The dot
+/// run for each line absorbs however much both its label and its value fall short of the
+/// widest label/value in `pairs`, plus a fixed minimum, so the left edge of every label and the
+/// right edge of every value land in the same column across the whole block - even when one
+/// value (e.g. `persistentId`'s 36-character UUID) is much longer than the rest, which just
+/// means every dot run stretches out to match it.
+private func renderMenuLines(_ pairs: [(label: String, value: String)], indent: String) -> [String] {
+    guard !pairs.isEmpty else { return [] }
+    let minDots = 3
+    let labelWidth = pairs.map(\.label.count).max() ?? 0
+    let valueWidth = pairs.map(\.value.count).max() ?? 0
+
+    return pairs.map { pair in
+        let dotCount = (labelWidth - pair.label.count) + (valueWidth - pair.value.count) + minDots
+        let dots = String(repeating: ".", count: dotCount)
+        return "\(indent)\(pair.label) \(dots) \(pair.value)"
+    }
 }
 
 /// Left-aligns `rows` (with `headers` as the first row) into columns sized to the widest plain
@@ -176,28 +197,47 @@ func printTable(headers: [String], rows: [[String]], colorColumn: Int?, colorEna
     }
 }
 
-/// Pipes `text` through `$PAGER` (falling back to `less`) when stdout is a TTY, per §5;
-/// otherwise prints it directly, since a script or redirect should get plain text, not a pager
-/// invocation that hangs waiting for a terminal.
-func pageOutput(_ text: String) {
-    guard isatty(fileno(stdout)) != 0 else {
+/// Pipes `text` through `pager` (a `Settings.current.pager`, already resolved from `$PAGER`/the
+/// config file/the "less" default) when stdout is a TTY, per §5; otherwise prints it directly,
+/// since a script or redirect should get plain text, not a pager invocation that hangs waiting
+/// for a terminal. `disablePager` skips paging unconditionally, for people who always want
+/// plain output.
+func pageOutput(_ text: String, pager: String, disablePager: Bool) {
+    guard !disablePager, isatty(fileno(stdout)) != 0 else {
         print(text)
         return
     }
 
-    let pagerCommand = ProcessInfo.processInfo.environment["PAGER"] ?? "less"
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = [pagerCommand]
+    process.executableURL = URL(fileURLWithPath: "/bin/sh")
+    process.arguments = ["-c", pager] // -c (not env) so a pager command like "less -R" still works
     let inputPipe = Pipe()
     process.standardInput = inputPipe
 
-    do {
-        try process.run()
-        inputPipe.fileHandleForWriting.write(Data(text.utf8))
-        try inputPipe.fileHandleForWriting.close()
-        process.waitUntilExit()
-    } catch {
+    guard (try? process.run()) != nil else {
         print(text)
+        return
     }
+
+    // Foundation spawns the pager into its own new process group, but never grants it control
+    // of the terminal - so the instant an interactive pager like `less` tries to configure the
+    // tty (to read keystrokes, enter raw mode), the kernel stops it with SIGTTOU/SIGTTIN, and it
+    // hangs invisibly (state "T", not spinning) instead of paging. A shell avoids this for
+    // foreground jobs by handing the tty to the child's process group first, then reclaiming it
+    // after - do the same thing here.
+    let ttyFd = STDIN_FILENO
+    let ownPgrp = getpgrp()
+    let pagerPgrp = process.processIdentifier
+    tcsetpgrp(ttyFd, pagerPgrp)
+    defer {
+        // Reclaiming the tty happens while we're momentarily a background process ourselves, so
+        // ignore SIGTTOU around the call or the kernel would stop *us* the same way.
+        signal(SIGTTOU, SIG_IGN)
+        tcsetpgrp(ttyFd, ownPgrp)
+        signal(SIGTTOU, SIG_DFL)
+    }
+
+    inputPipe.fileHandleForWriting.write(Data(text.utf8))
+    try? inputPipe.fileHandleForWriting.close()
+    process.waitUntilExit()
 }
