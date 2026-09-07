@@ -88,8 +88,34 @@ def test_list_json_smoke():
         screens = json.loads(output)
         check('list --json prints a JSON array', isinstance(screens, list))
         check('list --json entries have a persistentID', all('persistentID' in s for s in screens))
+        # dict preserves insertion order (Python 3.7+), and json.loads doesn't reorder it, so
+        # this reflects the actual key order in the JSON text.
+        check('list --json puts modes last in every entry', all(list(s.keys())[-1] == 'modes' for s in screens))
     except json.JSONDecodeError:
         check('list --json prints valid JSON', False)
+
+
+def test_list_json_key_order_is_deterministic():
+    # This JSONEncoder's default (non-`.sortedKeys`) key order is NOT declaration/encode-call
+    # order, it's effectively random per process - list --json works around this by hand for its
+    # scalar/modes split (see ScreenInfoJSON.swift). Confirm two separate invocations agree.
+    first, code1 = run('list', '--json')
+    second, code2 = run('list', '--json')
+    check('list --json exits 0 on repeated runs', code1 == 0 and code2 == 0)
+    check('list --json key order is identical across separate invocations', first == second)
+
+
+def test_list_long_shows_persistent_id():
+    output, code = run('list', '--long')
+    check('list --long exits 0', code == 0)
+    if 'Screen ' not in output:
+        print('SKIP: list --long persistent-id test (no screen discovered)')
+        return
+    check('list --long shows Persistent id', 'Persistent id ' in output)
+    check(
+        'Persistent id appears before Contextual id',
+        0 <= output.find('Persistent id') < output.find('Contextual id'),
+    )
 
 
 def test_list_long_missing_screen():
@@ -170,6 +196,66 @@ def test_set_missing_resolution_on_a_real_screen():
     check('impossible resolution on a real screen exits 1', code == 1)
 
 
+def test_list_long_config_override():
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = os.path.join(config_home, 'monctl')
+        os.makedirs(config_dir)
+        config_path = os.path.join(config_dir, 'config.json')
+        env = {'XDG_CONFIG_HOME': config_home}
+
+        with open(config_path, 'w') as f:
+            json.dump({'listLongFields': [
+                {'key': 'type'},
+                {'key': 'depth', 'label': 'Depth'},
+            ]}, f)
+        output, code = run('list', '--long', env=env)
+        check('list --long config override exits 0', code == 0)
+        check('list --long config override hides fields left out of listLongFields', 'Serial id' not in output)
+        check('list --long config override renames a label', 'Depth ' in output and 'Color Depth' not in output)
+
+        with open(config_path, 'w') as f:
+            f.write('{ not json')
+        output, code = run('list', '--long', env=env)
+        check('list --long with a malformed config warns instead of failing', 'could not parse' in output)
+        check('list --long with a malformed config still exits 0 (falls back to defaults)', code == 0)
+        check('list --long falls back to default fields on a bad config', 'Color Depth' in output)
+
+        # pager/disablePager only change behavior when stdout is a TTY, which subprocess.run()
+        # never is - so this only proves the config keys parse cleanly, not that paging is
+        # actually skipped/redirected. That needs a real pty to verify (done by hand).
+        with open(config_path, 'w') as f:
+            json.dump({'pager': 'cat', 'disablePager': True}, f)
+        output, code = run('list', '--long', env=env)
+        check('list --long parses pager/disablePager config keys without error', code == 0)
+        check('list --long output is unaffected by pager config on a non-TTY stdout', 'Color Depth' in output)
+
+
+def test_env_overrides_config_file():
+    """Every config.json key has an environment variable counterpart, and when both are set the
+    environment variable wins (see docs/usage.md's Configuration section). listLongFields is the
+    setting whose precedence is observable here without touching real display state or a TTY.
+    profileApplyNoConfirm's precedence needs a real (non-dry-run) `profile apply` to observe -
+    that's covered in tests_manual.py instead, matching this file's screen-state-safe scope (see
+    module docstring). pager/disablePager/noColor/editor only change TTY-dependent behavior, so
+    those are covered by test_list_long_config_override's "parses without error" check plus
+    manual pty verification.
+    """
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = os.path.join(config_home, 'monctl')
+        os.makedirs(config_dir)
+        config_path = os.path.join(config_dir, 'config.json')
+
+        with open(config_path, 'w') as f:
+            json.dump({'listLongFields': [{'key': 'type'}]}, f)
+        output, code = run('list', '--long', env={
+            'XDG_CONFIG_HOME': config_home,
+            'MONCTL_LIST_LONG_FIELDS': 'hz',
+        })
+        check('$MONCTL_LIST_LONG_FIELDS overrides listLongFields when both are set', code == 0)
+        check('  -> the env var\'s field is used', 'Hz ' in output)
+        check('  -> the config file\'s field is not', 'Type ' not in output)
+
+
 def test_profile_lifecycle():
     """Profiles are just files, so this is safe on CI: no real screen config is touched by
     save (a read-only snapshot) or list/show/rm (pure file operations) - only `profile apply`
@@ -234,6 +320,8 @@ def main():
     test_version()
     test_list_smoke()
     test_list_json_smoke()
+    test_list_json_key_order_is_deterministic()
+    test_list_long_shows_persistent_id()
     test_list_long_missing_screen()
     test_set_missing_screen()
     test_set_missing_screen_contextual()
@@ -245,6 +333,8 @@ def main():
     test_set_right_of_missing_reference()
     test_set_dry_run_on_a_real_screen_is_a_no_op()
     test_set_missing_resolution_on_a_real_screen()
+    test_list_long_config_override()
+    test_env_overrides_config_file()
     test_profile_lifecycle()
     test_profile_apply_missing_profile()
     test_completion()

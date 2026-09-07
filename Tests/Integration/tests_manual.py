@@ -120,6 +120,29 @@ def test_profile_apply_no_confirm_env(screens):
     )
 
 
+def test_profile_apply_no_confirm_env_overrides_config():
+    # Every config.json key has an environment variable counterpart, and env always wins when
+    # both are set (see docs/usage.md's Configuration section) - profileApplyNoConfirm is the
+    # one setting whose precedence needs a real (non-dry-run) `profile apply` to observe, which
+    # is why it's here instead of in test_cli.py. Uses an isolated XDG_CONFIG_HOME so this never
+    # touches your real config.json or saved profiles.
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = f'{config_home}/monctl'
+        subprocess.run(['mkdir', '-p', config_dir], check=True)
+        with open(f'{config_dir}/config.json', 'w') as f:
+            json.dump({'profileApplyNoConfirm': False}, f)
+
+        env = {'XDG_CONFIG_HOME': config_home, 'MONCTL_PROFILE_APPLY_NO_CONFIRM': '1'}
+        name = 'tests-manual-env-precedence'
+        test('save_env_precedence_profile', f'profile save {name}', extra_env=env)
+        test(
+            'profile_apply_no_confirm_env_overrides_config_false',
+            f'profile apply {name}',
+            expected_code=0,
+            extra_env=env,
+        )
+
+
 def main():
     print('This suite changes your ACTUAL screen configuration. Save your work first.')
     print('')
@@ -135,6 +158,7 @@ def main():
     test_relative_placement(screens)
     test_mirroring(screens)
     test_profile_apply_no_confirm_env(screens)
+    test_profile_apply_no_confirm_env_overrides_config()
 
     print('')
     print('Restoring original arrangement...')
