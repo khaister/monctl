@@ -197,9 +197,13 @@ Every setting below is also available as an environment variable.
 > screens waking up in non-deterministic order. If none of the screenId options work for your
 > setup, search displayplacer's GitHub Issues for conversation on this — it's inherited, upstream
 > behavior, so the existing discussions still apply. Many people have written shell scripts to
-> work around this. Recommended discussions: <https://github.com/jakehilborn/displayplacer/issues/80>,
-> <https://github.com/jakehilborn/displayplacer/issues/30>, <https://github.com/jakehilborn/displayplacer/issues/89>,
-> <https://github.com/jakehilborn/displayplacer/issues/77>, <https://github.com/jakehilborn/displayplacer/issues/100>,
-> <https://github.com/jakehilborn/displayplacer/pull/96>.
+> work around this. Recommended discussions:
+>
+> - <https://github.com/jakehilborn/displayplacer/issues/80>
+> - <https://github.com/jakehilborn/displayplacer/issues/30>
+> - <https://github.com/jakehilborn/displayplacer/issues/89>
+> - <https://github.com/jakehilborn/displayplacer/issues/77>
+> - <https://github.com/jakehilborn/displayplacer/issues/100>
+> - <https://github.com/jakehilborn/displayplacer/pull/96>
 
 See [Concepts](concepts.md#screen-identifiers) for what each screenId type is and when to use it.
