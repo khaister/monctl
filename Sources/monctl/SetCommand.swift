@@ -83,7 +83,7 @@ struct SetCommand: ParsableCommand {
     func run() throws {
         let onlineList = onlineDisplays()
         let id = convertUUIDtoID(screen)
-        let ce = colorEnabled(noColor: colorOptions.noColor, fd: fileno(stdout))
+        let ce = colorEnabled(forceDisabled: colorOptions.resolvedNoColor, fd: fileno(stdout))
 
         guard onlineList.contains(id) else {
             if quiet {

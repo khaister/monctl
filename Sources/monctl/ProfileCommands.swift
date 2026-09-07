@@ -78,7 +78,7 @@ struct ProfileApply: ParsableCommand {
         }
 
         let onlineList = onlineDisplays()
-        let stdoutColor = colorEnabled(noColor: colorOptions.noColor, fd: fileno(stdout))
+        let stdoutColor = colorEnabled(forceDisabled: colorOptions.resolvedNoColor, fd: fileno(stdout))
         let diffLines = configs.enumerated().map { index, target -> String in
             let prefix = "Screen \(index + 1)"
             let id = convertUUIDtoID(target.uuid)
@@ -102,8 +102,8 @@ struct ProfileApply: ParsableCommand {
         print("Apply profile \"\(name)\":")
         diffLines.forEach { print("  " + $0) }
 
-        if ProcessInfo.processInfo.environment["MONCTL_PROFILE_APPLY_NO_CONFIRM"] != "1" {
-            let stderrColor = colorEnabled(noColor: colorOptions.noColor, fd: fileno(stderr))
+        if !Settings.current.profileApplyNoConfirm {
+            let stderrColor = colorEnabled(forceDisabled: colorOptions.resolvedNoColor, fd: fileno(stderr))
             FileHandle.standardError.write(Data(colorize("Apply this? [y/N] ", .yellow, enabled: stderrColor).utf8))
             let answer = readLine()?.lowercased() ?? ""
             guard answer == "y" || answer == "yes" else {
@@ -224,7 +224,7 @@ struct ProfileEdit: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let editor = ProcessInfo.processInfo.environment["EDITOR"] ?? "vi"
+        let editor = Settings.current.editor
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [editor, ProfileStore.path(for: name).path]

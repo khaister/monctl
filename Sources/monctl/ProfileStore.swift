@@ -4,12 +4,7 @@ import Foundation
 /// (XDG-style, §4.1), one `[ScreenConfig]` array per file.
 enum ProfileStore {
     static var directory: URL {
-        let configHome: String = if let xdg = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"], !xdg.isEmpty {
-            xdg
-        } else {
-            NSHomeDirectory() + "/.config"
-        }
-        return URL(fileURLWithPath: configHome).appendingPathComponent("monctl/profiles")
+        monctlConfigDirectory().appendingPathComponent("profiles")
     }
 
     static func path(for name: String) -> URL {
