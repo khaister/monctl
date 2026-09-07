@@ -16,7 +16,7 @@ See [Usage](usage.md#screenids-switching) for what to do if ids keep changing on
 
 `origin` is a pixel coordinate in macOS's shared virtual-desktop space, describing where a screen's top-left corner sits relative to every other screen. The screen set to origin `(0,0)` becomes the primary screen (the one with the white bar in System Preferences).
 
-Placing one screen "to the right" of another means setting its origin's x-coordinate to the first screen's width — origin is an absolute position, not a relative one, so you have to compute that offset yourself today.
+`monctl set`'s `--right-of`/`--left-of`/`--above`/`--below <id>` flags compute this origin for you from the referenced screen's current bounds — e.g. "to the right of" means the first screen's x-coordinate plus its width. `--origin x,y` remains available directly for placements those flags can't express, such as partial overlap or staggered arrangements.
 
 ## Mode
 

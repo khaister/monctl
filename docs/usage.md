@@ -1,81 +1,133 @@
 # Usage
 
-Show current screen info and possible resolutions:
+Show connected screens:
 
 ```sh
 monctl list
 ```
 
-Apply screen config (`hz` & `color_depth` are optional):
+Show full detail for one screen — alternate ids, exact depth, every mode it supports:
 
 ```sh
-monctl "id:<screenId> res:<width>x<height> hz:<num> color_depth:<num> scaling:<on/off> origin:(<x>,<y>) degree:<0/90/180/270>"
+monctl list --long --screen <id>
 ```
 
-Apply screen config using a mode number instead of resolution:
+Narrow the mode list to one resolution's hz/depth/scaling combos:
 
 ```sh
-monctl "id:<screenId> mode:<modeNum> origin:(<x>,<y>) degree:<0/90/180/270>"
+monctl list --long --screen <id> --resolution <width>x<height>
 ```
 
-Apply screen config with mirrored screens:
+Machine-readable output (always full detail, regardless of `--long`):
 
 ```sh
-monctl "id:<mainScreenId>+<1stMirrorScreenId>+<2ndMirrorScreenId> res:<width>x<height> scaling:<on/off> origin:(<x>,<y>) degree:<0/90/180/270>"
+monctl list --json
 ```
 
-Silence errors per-screen using `quiet`:
+## Adjusting one screen
+
+`monctl set` changes one screen at a time. Only pass the flags for what you want to change —
+everything else is left alone.
 
 ```sh
-monctl "id:<screenId> mode:<modeNum> origin:(<x>,<y>) degree:0 quiet:true"
+monctl set --screen <id> --resolution <width>x<height>   # hz/depth auto-pick the best match
+monctl set --screen <id> --mode <modeNum>                # exact mode from `list --long`
+monctl set --screen <id> --rotate <0|90|180|270>
+monctl set --screen <id> --enabled <true|false>
 ```
 
-Disable a screen:
+Preview a change without applying it:
 
 ```sh
-monctl "id:<screenId> enabled:false"
+monctl set --screen <id> --rotate 90 --dry-run
 ```
 
-See [Concepts](concepts.md) for what `id`, `origin`, and `mode` mean.
+### Arrangement
 
-## Instructions
+Relative placement flags compute the origin from another screen's current bounds, so you don't
+have to work out pixel offsets by hand:
 
-1. Manually set rotations 1st, resolutions 2nd, and arrangement 3rd. For extra resolutions and rotations, see [Notes](#notes) below.
-   - Open System Preferences -> Displays
-   - Choose desired screen rotations (use `monctl` for rotating the internal MacBook screen)
-   - Choose desired resolutions (use `monctl` for extra resolutions)
-   - Drag the white bar to your desired primary screen
-   - Arrange screens as desired and/or enable mirroring. To enable partial mirroring, hold the alt/option key and drag a display on top of another.
-2. Use `monctl list` to print your current layout's args, so you can create profiles for scripting/hotkeys with [Automator](https://github.com/jakehilborn/displayplacer/issues/13), BetterTouchTool, etc.
+```sh
+monctl set --screen <id> --right-of <otherId>
+monctl set --screen <id> --left-of <otherId>
+monctl set --screen <id> --above <otherId>
+monctl set --screen <id> --below <otherId>
+```
 
-> [!NOTE]
-> `monctl list` and System Preferences only show resolutions for the screen's *current* rotation.
+`--origin x,y` sets a raw pixel origin directly, for placements the relative flags can't express
+(partial overlap, vertically centering screens of different heights, staggered arrangements). See
+[Concepts](concepts.md#origin) for what origin means.
 
-## ScreenIds Switching
+### Mirroring
 
-> [!WARNING]
-> macOS sometimes changes persistent screenIds when there are race conditions from external screens waking up in non-deterministic order. If none of the screenId options work for your setup, search displayplacer's GitHub Issues for conversation on this — it's inherited, upstream behavior, so the existing discussions still apply. Many people have written shell scripts to work around this. Recommended discussions: https://github.com/jakehilborn/displayplacer/issues/80, https://github.com/jakehilborn/displayplacer/issues/30, https://github.com/jakehilborn/displayplacer/issues/89, https://github.com/jakehilborn/displayplacer/issues/77, https://github.com/jakehilborn/displayplacer/issues/100, https://github.com/jakehilborn/displayplacer/pull/96.
+```sh
+monctl set --screen <id> --mirror <otherId>[,<otherId>...]
+```
 
-See [Concepts](concepts.md#screen-identifiers) for what each screenId type is and when to use it.
+## Profiles
+
+A profile is a saved, named layout — the replacement for copy-pasting `monctl list` output into
+Automator or BetterTouchTool.
+
+```sh
+monctl profile save <name>          # capture the current layout
+monctl profile apply <name>         # re-apply it later (prompts with a diff first, see below)
+monctl profile list                 # list saved profiles
+monctl profile show <name>          # print one (or --json)
+monctl profile rm <name>            # delete one
+monctl profile edit <name>          # open the profile's JSON in $EDITOR
+```
+
+`profile apply` always prints a diff of what's about to change and asks for confirmation before
+applying:
+
+```
+$ monctl profile apply docked
+Apply profile "docked":
+  Screen 1: no change
+  Screen 2: rotate 0 -> 90, origin (1920,0) -> (0,0)
+Apply this? [y/N]
+```
+
+Set `MONCTL_PROFILE_APPLY_NO_CONFIRM=1` to skip the prompt — this is what a hotkey tool
+(Automator, BetterTouchTool) invoking `monctl profile apply <name>` should do, since it can't
+answer an interactive prompt. `--dry-run` previews the same diff without prompting or applying,
+on or off that env var.
+
+Profiles are stored as human-editable JSON under `~/.config/monctl/profiles/<name>.json`, so they
+work fine in a dotfiles repo.
+
+## Shell completion
+
+```sh
+monctl completion zsh   # or bash, fish
+```
+
+See your shell's docs for where to put the generated script (e.g. a file sourced by your
+`.zshrc`, or a directory on `$fpath`).
 
 ## Notes
 
-- Use an extra resolution shown in `monctl list` by executing:
-  ```sh
-  monctl "id:<screenId> mode:<modeNum>"
-  ```
-  Some listed resolutions do not work — if you select one, `monctl` will default to another working resolution.
-- Rotate your internal MacBook screen:
-  ```sh
-  monctl "id:<screenId> degree:<0/90/180/270>"
-  ```
-- The screen set to origin `(0,0)` becomes the primary screen (white bar in System Preferences).
-- The first screenId in a mirroring set is the "Optimize for" screen in System Preferences — you can only choose resolutions for that screen. If a mirroring resolution you need is missing, try making a different screenId first in the set.
-- `hz` and `color_depth` are optional. If omitted, the highest hz and then the highest color depth are applied automatically.
-- `screenId` is optional if there's only one screen — but `monctl` generally expects the full profile per screen, so this may be buggy.
+- `monctl list` and System Preferences only show resolutions for the screen's *current*
+  rotation.
+- `hz` and `depth` are optional on `--resolution`. If omitted, the highest hz and then the
+  highest color depth are applied automatically.
+- If you disable a screen, you may need to unplug/replug it to bring it back. On some setups you
+  can re-enable it instead: `monctl set --screen <id> --enabled true`.
+- The first screen id passed to `--mirror`'s *primary* screen is the "Optimize for" screen in
+  System Preferences — resolution choices apply to that screen; the mirroring ids on `--mirror`
+  itself are the ones that will display it scaled to fit.
 
-> [!TIP]
-> If you disable a screen, you may need to unplug/replug it to bring it back. On some setups you can re-enable it instead:
-> ```sh
-> monctl "id:<screenId> enabled:true"
-> ```
+## ScreenIds switching
+
+> [!WARNING]
+> macOS sometimes changes persistent screenIds when there are race conditions from external
+> screens waking up in non-deterministic order. If none of the screenId options work for your
+> setup, search displayplacer's GitHub Issues for conversation on this — it's inherited, upstream
+> behavior, so the existing discussions still apply. Many people have written shell scripts to
+> work around this. Recommended discussions: https://github.com/jakehilborn/displayplacer/issues/80,
+> https://github.com/jakehilborn/displayplacer/issues/30, https://github.com/jakehilborn/displayplacer/issues/89,
+> https://github.com/jakehilborn/displayplacer/issues/77, https://github.com/jakehilborn/displayplacer/issues/100,
+> https://github.com/jakehilborn/displayplacer/pull/96.
+
+See [Concepts](concepts.md#screen-identifiers) for what each screenId type is and when to use it.

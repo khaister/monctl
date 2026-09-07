@@ -1,6 +1,6 @@
 # monctl CLI Modernization
 
-**Status:** Draft
+**Status:** Implemented
 
 ## Summary
 

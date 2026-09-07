@@ -13,4 +13,4 @@
 
 ## Design proposals
 
-- [CLI Modernization](modernization.md) — draft proposal for a flag/subcommand-based CLI redesign
+- [CLI Modernization](modernization.md) — proposal for the flag/subcommand-based CLI redesign implemented in [Usage](usage.md)
