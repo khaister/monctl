@@ -22,6 +22,12 @@ See [Usage](usage.md#screenids-switching) for what to do if ids keep changing on
 
 A "mode" is one resolution/refresh-rate/color-depth/scaling combination a screen supports, as printed by `monctl list`. Screens typically support dozens of modes; not all of them are guaranteed to work when selected.
 
+## Scaling and color depth
+
+**Scaling** determines the relationship between a mode's logical resolution (what apps draw to) and the screen's physical pixels. A "scaled" (HiDPI) mode drives more physical pixels than its logical resolution implies, rendering everything sharper at the same apparent size; a "native" (1x) mode maps logical and physical pixels one-to-one. `monctl list` marks each mode as scaled or native — picking a scaled mode on a low-resolution panel can make text and UI elements too large to be useful.
+
+**Color depth** is the number of bits per color channel a mode drives, most commonly 8-bit or 10-bit. Higher bit depths render smoother gradients with less banding, but aren't available on every resolution/refresh-rate combination — a screen may need to drop refresh rate, or you may need a higher-bandwidth cable or port, to unlock its highest color depth.
+
 ## Mirroring
 
 A mirroring set is a group of screens all showing the same image. The first screen id in the set is the "Optimize for" screen in System Preferences — resolution choices apply to that screen, and other screens in the set display it scaled to fit.
