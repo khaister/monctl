@@ -210,10 +210,15 @@ Would apply profile "docked":
 ## 6. Open questions
 
 - Subcommand naming: `monctl set` versus something more specific such as `monctl configure` or `monctl screen set`. `set` is short but somewhat generic.
+  - `set` is good for now
 - Is `profile` the right noun, or would `layout`/`arrangement` fit better given the "arrange displays" framing in the README's tagline?
+  - `profile` is good for now
 - Should `monctl set` support configuring more than one screen per invocation (repeated `--screen` blocks), or should that remain exclusively `profile apply`'s responsibility, keeping `set` strictly single-screen?
+  - only one screen for now
 - Should `profile apply` require `--dry-run` confirmation by default on first use, or only when explicitly requested? Rotating or disabling the screen currently in use is the main failure mode to guard against.
+  - Resolved: `profile apply` prints a diff (same colored old→new format as `--dry-run`, see §5) and prompts for confirmation by default, every time, not just first use — since the risky screens can differ across profiles or hotplug state, "first use" alone doesn't cover repeat risk. The confirmation prompt itself is yellow (the existing warning color, per §5) to draw the eye before the user hits enter. Set `MONCTL_PROFILE_APPLY_NO_CONFIRM=1` to skip the prompt and apply immediately, for hotkey tools (Automator, BetterTouchTool) that can't answer an interactive prompt. `--dry-run` remains available separately at any time, on or off that env var, purely to preview without applying.
 - Is there interest in an interactive `monctl arrange` (prompt-driven) mode for first-time setup, or should monctl remain strictly a scripting/hotkey-first tool?
+  - Skip for now
 
 ## 7. References
 
