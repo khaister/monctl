@@ -96,6 +96,8 @@ monctl set --screen <id> [flags]  # apply config to a single screen
 
 monctl profile save <name>        # capture the current layout (from `list`) under a name
 monctl profile apply <name>       # apply a saved layout, atomically, across all its screens
+    --dry-run                    # print the diff, don't apply, don't prompt
+    # confirms by default (colored diff + yellow prompt, per §5); MONCTL_PROFILE_APPLY_NO_CONFIRM=1 skips the prompt for hotkey tools
 monctl profile list                # list saved profiles
 monctl profile show <name>         # print a saved profile (human or --json)
 monctl profile rm <name>
