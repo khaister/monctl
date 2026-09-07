@@ -6,10 +6,22 @@ import Foundation
     import Darwin
 #endif
 
-/// Writes `s` to stderr, colored red per §5's "errors are red" convention (respecting
-/// `--no-color`/`NO_COLOR`/non-TTY via `colorEnabled`).
+/// `eprint`/`printError`/`printWarning` check only the raw `NO_COLOR` env var, not the full
+/// `Settings.current.noColor` (which also folds in the config file) - `printWarning` is itself
+/// called while `Settings.current` is still being resolved (a bad config file, or an unknown
+/// `$MONCTL_LIST_LONG_FIELDS` entry, both warn from inside that resolution), and reading
+/// `Settings.current` from within its own initializer would deadlock/crash.
+private func stderrColorForceDisabled() -> Bool {
+    ProcessInfo.processInfo.environment["NO_COLOR"] != nil
+}
+
+/// Writes `s` to stderr, colored red per §5's "errors are red" convention.
 func eprint(_ s: String) {
-    let colored = colorize(s, .red, enabled: colorEnabled(noColor: false, fd: fileno(stderr)))
+    let colored = colorize(
+        s,
+        .red,
+        enabled: colorEnabled(forceDisabled: stderrColorForceDisabled(), fd: fileno(stderr))
+    )
     FileHandle.standardError.write(colored.data(using: .utf8)!)
 }
 
@@ -21,7 +33,8 @@ func printError(_ message: String) {
 /// A single-line, yellow warning - used for recoverable per-screen issues (e.g. a missing
 /// screen that other screens in the same operation can still proceed without).
 func printWarning(_ message: String) {
-    let colored = colorize("Warning: \(message)", .yellow, enabled: colorEnabled(noColor: false, fd: fileno(stderr)))
+    let ce = colorEnabled(forceDisabled: stderrColorForceDisabled(), fd: fileno(stderr))
+    let colored = colorize("Warning: \(message)", .yellow, enabled: ce)
     FileHandle.standardError.write((colored + "\n").data(using: .utf8)!)
 }
 

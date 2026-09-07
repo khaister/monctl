@@ -1,5 +1,4 @@
 import ArgumentParser
-import Foundation
 
 #if canImport(Glibc)
     import Glibc
@@ -12,6 +11,12 @@ import Foundation
 struct ColorOptions: ParsableArguments {
     @Flag(name: .customLong("no-color"), help: "Disable colored output.")
     var noColor = false
+
+    /// `--no-color` always wins; otherwise falls through to the resolved `NO_COLOR`/config file
+    /// setting (env wins over file there - see `Settings`).
+    var resolvedNoColor: Bool {
+        noColor || Settings.current.noColor
+    }
 }
 
 enum SGR: Int {
@@ -22,15 +27,10 @@ enum SGR: Int {
     case dim = 2
 }
 
-/// True when color should be used for `fd` (stdout or stderr): not suppressed by `--no-color`
-/// or `NO_COLOR`, and the stream is actually a TTY (never color when piped/redirected).
-func colorEnabled(noColor: Bool, fd: Int32) -> Bool {
-    if noColor {
-        return false
-    }
-    if ProcessInfo.processInfo.environment["NO_COLOR"] != nil {
-        return false
-    }
+/// True when color should be used for `fd` (stdout or stderr): not suppressed by
+/// `forceDisabled`, and the stream is actually a TTY (never color when piped/redirected).
+func colorEnabled(forceDisabled: Bool, fd: Int32) -> Bool {
+    guard !forceDisabled else { return false }
     return isatty(fd) != 0
 }
 
