@@ -41,7 +41,7 @@ func unsetMirrors(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayI
     }
 
     if CGCompleteDisplayConfiguration(configRef, .permanently) != .success {
-        eprint("Error unsetting mirroring as a prerequisite to applying profiles\n")
+        printError("could not unset mirroring as a prerequisite to applying profiles.")
         isSuccess = false
     }
 
@@ -53,7 +53,7 @@ func unsetMirror(_ configRef: CGDisplayConfigRef?, _ mirrorScreenId: CGDirectDis
     if CGDisplayIsInMirrorSet(mirrorScreenId) != 0,
        CGDisplayMirrorsDisplay(mirrorScreenId) != 0 { // this screen is a secondary screen in a mirroring set
         if CGConfigureDisplayMirrorOfDisplay(configRef, mirrorScreenId, kCGNullDirectDisplay) != .success {
-            eprint("Error disabling mirroring on screen \(mirrorScreenUUID)\n")
+            printError("could not disable mirroring on screen \"\(mirrorScreenUUID)\".")
             return false
         }
     }
@@ -91,7 +91,7 @@ func setEnableds(_ screenConfigs: [ScreenConfig], onlineList: [CGDirectDisplayID
     }
 
     if CGCompleteDisplayConfiguration(configRef, .permanently) != .success {
-        eprint("Error altering enabled/disabled config\n")
+        printError("could not finalize enabled/disabled changes.")
         isSuccess = false
     }
 
@@ -102,7 +102,7 @@ func setEnabled(_ configRef: CGDisplayConfigRef?, _ screenId: CGDirectDisplayID,
                 _ isEnabled: Bool) -> Bool {
     if isScreenEnabled(screenId) != isEnabled {
         if !configureDisplayEnabled(configRef, screenId, isEnabled) {
-            eprint("Error setting screen \(screenUUID) to enabled:\(isEnabled ? "true" : "false")\n")
+            printError("could not set screen \"\(screenUUID)\" to enabled:\(isEnabled ? "true" : "false").")
             return false
         }
     }
@@ -191,7 +191,7 @@ func setMirror(
     _ mirrorScreenUUID: String
 ) -> Bool {
     if CGConfigureDisplayMirrorOfDisplay(configRef, mirrorScreenId, primaryScreenId) != .success {
-        eprint("Error making the secondary screen \(mirrorScreenUUID) mirror the primary screen \(primaryScreenUUID)\n")
+        printError("could not make screen \"\(mirrorScreenUUID)\" mirror screen \"\(primaryScreenUUID)\".")
         return false
     }
 
@@ -221,15 +221,15 @@ func setResolutions(_ screenConfigs: [ScreenConfig], configRef: CGDisplayConfigR
     return isSuccess
 }
 
-func setResolution(
-    _ configRef: CGDisplayConfigRef?,
-    _ screenId: CGDirectDisplayID,
-    _ screenUUID: String,
-    _ config: ScreenConfig
-) -> Bool {
-    if config.modeNum != -1 { // user specified modeNum instead of height/width/hz
-        _ = configureDisplayMode(configRef, screenId, Int32(config.modeNum))
-        return true
+/// Resolves what `setResolution` would end up applying, without applying it - either the exact
+/// mode `config.modeNum` points at, or (when `config.modeNum == -1`) whatever
+/// `selectBestMode` picks for `config`'s width/height/hz/depth/scaled. `nil` means no mode
+/// matches. Used both by the real apply (`setResolution`) and by `set --dry-run`, so a preview
+/// reports the same match-or-fail outcome (and the same concrete hz/depth/scaling a wildcarded
+/// 0 resolves to) that actually applying would.
+func findMatchingMode(_ screenId: CGDirectDisplayID, _ config: ScreenConfig) -> DisplayMode? {
+    if config.modeNum != -1 {
+        return getDisplayMode(screenId, Int32(config.modeNum))
     }
 
     let modeCount = getDisplayModeCount(screenId)
@@ -239,29 +239,41 @@ func setResolution(
         modes.append(getDisplayMode(screenId, i))
     }
 
-    if let bestMode = selectBestMode(
+    return selectBestMode(
         modes,
         width: config.width,
         height: config.height,
         hz: config.hz,
         depth: config.depth,
         scaled: config.scaled
-    ) {
-        _ = configureDisplayMode(configRef, screenId, bestMode.mode)
-        return true
-    }
+    )
+}
 
-    var message = "Screen ID \(screenUUID): could not find res:\(config.width)x\(config.height)"
+func printNoMatchingModeError(screenUUID: String, config: ScreenConfig) {
+    var message = "no mode on screen \"\(screenUUID)\" matches resolution \(config.width)x\(config.height)"
     if config.hz != 0 {
         message += " hz:\(config.hz)"
     }
     if config.depth != 0 {
-        message += " color_depth:\(config.depth)"
+        message += " depth:\(config.depth)"
     }
-    message += " scaling:\(config.scaled ? "on" : "off")\n"
-    eprint(message)
+    message += " scaling:\(config.scaled ? "on" : "off"). Run 'monctl list --long --screen \(screenUUID)' to see available modes."
+    printError(message)
+}
 
-    return false
+func setResolution(
+    _ configRef: CGDisplayConfigRef?,
+    _ screenId: CGDirectDisplayID,
+    _ screenUUID: String,
+    _ config: ScreenConfig
+) -> Bool {
+    guard let bestMode = findMatchingMode(screenId, config) else {
+        printNoMatchingModeError(screenUUID: screenUUID, config: config)
+        return false
+    }
+
+    _ = configureDisplayMode(configRef, screenId, bestMode.mode)
+    return true
 }
 
 /// Finds the mode in `modes` that best matches the required width/height and optional
@@ -345,9 +357,41 @@ func setPosition(
     _ y: Int
 ) -> Bool {
     if CGConfigureDisplayOrigin(configRef, screenId, Int32(x), Int32(y)) != .success {
-        eprint("Error moving screen \(screenUUID) to \(x)x\(y)\n")
+        printError("could not move screen \"\(screenUUID)\" to (\(x),\(y)).")
         return false
     }
 
     return true
+}
+
+/// Applies a full set of screen configs atomically. Mirrors the staged order the original
+/// single-string `apply` command used: enable/disable, unset mirrors, and rotate each as their
+/// own prerequisite completions, then mirror/resize/reposition in one shared
+/// `CGDisplayConfigRef`, finished by a single `CGCompleteDisplayConfiguration` call. Used by
+/// both `set` (a one-element array) and `profile apply` (the whole saved layout).
+func applyScreenConfigs(_ screenConfigs: [ScreenConfig]) -> Bool {
+    let onlineList = onlineDisplays()
+    var isSuccess = true
+
+    isSuccess = setEnableds(screenConfigs, onlineList: onlineList) && isSuccess
+    isSuccess = unsetMirrors(screenConfigs, onlineList: onlineList) && isSuccess
+    isSuccess = setRotations(screenConfigs, onlineList: onlineList) && isSuccess
+
+    var configRef: CGDisplayConfigRef?
+    CGBeginDisplayConfiguration(&configRef)
+    isSuccess = setMirrors(screenConfigs, configRef: configRef, onlineList: onlineList) && isSuccess
+    isSuccess = setResolutions(screenConfigs, configRef: configRef, onlineList: onlineList) && isSuccess
+    isSuccess = setPositions(
+        screenConfigs,
+        configRef: configRef,
+        onlineList: onlineList,
+        screenCount: onlineList.count
+    ) && isSuccess
+
+    if CGCompleteDisplayConfiguration(configRef, .permanently) != .success {
+        printError("could not finalize mirroring, resolutions, and/or positions.")
+        isSuccess = false
+    }
+
+    return isSuccess
 }

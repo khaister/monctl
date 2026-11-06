@@ -1,147 +1,146 @@
 #!/usr/bin/env python3
 """Manual, hardware-dependent regression suite for monctl.
 
-Run this BY HAND against your own real monitor setup. It is NOT part of CI -
-see Tests/Unit/ for the suite that runs there. This discovers whatever
-screens are actually connected via `monctl list` and adapts its
-scenarios to however many are present, instead of assuming a specific
-topology - previous versions of this file hardcoded UUIDs from the original
-developer's own 4-monitor Mac and could only ever run there.
+Run this BY HAND against your own real monitor setup. It is NOT part of CI - see
+Tests/Integration/test_cli.py for the suite that runs there. This discovers whatever screens are
+actually connected via `monctl list --json` and adapts its scenarios to however many are
+present, instead of assuming a specific topology.
 
-This WILL change your actual screen configuration while it runs (it restores
-your original arrangement afterward, via the same `list`-reconstructed
-command the README recommends for scripting profiles). Save your work first.
-
-Known gotcha this suite works around: a screen entry that's enabled (the
-default, or explicit `enabled:true`) but omits `res:`/`origin:`/`degree:`
-reads uninitialized memory for those fields (only `enabled:false` short-
-circuits before reaching them) - e.g. `id:<real> enabled:true` alone reliably
-fails with a garbage `could not find res:0x0` error. This is a pre-existing
-bug, out of scope to fix here, but it means any screen this suite wants left
-"as-is" must be given its real current res/origin/degree/etc, never a bare
-enabled:true - see `screen_properties()` below.
+This WILL change your actual screen configuration while it runs (it restores your original
+arrangement afterward via a `profile save`/`profile apply` round trip). Save your work first.
 """
+import json
 import re
 import subprocess
 import sys
+import tempfile
 
 BINARY = '../../.build/debug/monctl'
 FAKE_UUID = '00000000-0000-0000-0000-000000000000'
+RESTORE_PROFILE = 'tests-manual-restore-point'
 
 failures = []
 
 
-def monctl(args):
-    p = subprocess.Popen(BINARY + ' ' + args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = p.communicate()[0].decode('utf-8').strip()
-    code = p.wait()
-    return output, code
+def monctl(args, extra_env=None):
+    env = {'NO_COLOR': '1'}
+    if extra_env:
+        env.update(extra_env)
+    p = subprocess.run(BINARY + ' ' + args, shell=True, capture_output=True, text=True, env={**__import__('os').environ, **env})
+    return (p.stdout + p.stderr).strip(), p.returncode
 
 
 def discover_screens():
-    output, code = monctl('list')
+    output, code = monctl('list --json')
     if code != 0:
-        print('Could not run `monctl list` - aborting')
+        print('Could not run `monctl list --json` - aborting')
         sys.exit(1)
-    return re.findall(r'Persistent screen id: (\S+)', output)
+    return json.loads(output)
 
 
-def current_profile_command():
-    """The reconstructed `monctl "..."` command for whatever is live right now."""
-    output, code = monctl('list')
-    last_line = output.splitlines()[-1]
-    assert last_line.startswith('monctl ')
-    return last_line[len('monctl '):]
-
-
-def screen_properties(conf, uuid):
-    """The key:value tokens (everything but `id:...`) for one screen's snippet
-    within a multi-screen conf string, e.g. ['res:2056x1329', 'hz:120', ...].
-    Used to build new configs that leave a screen's real current state intact
-    instead of a bare `enabled:true`, which hits the uninitialized-memory bug
-    described in the module docstring."""
-    for segment in re.findall(r'"[^"]*"', conf):
-        tokens = segment[1:-1].split()
-        primary_id = tokens[0][len('id:'):].split('+')[0]
-        if primary_id == uuid:
-            return tokens[1:]
-    raise ValueError(f'no snippet found for screen {uuid} in: {conf}')
-
-
-def test(step, conf, expected_conf=None, expected_code=0, expected_error=None):
-    print(f'Executing {step}')
-    output, code = monctl(conf)
+def test(step, args, expected_code=0, expected_error=None, extra_env=None):
+    print(f'Executing {step}: monctl {args}')
+    output, code = monctl(args, extra_env=extra_env)
 
     try:
         if expected_error:
-            assert expected_error in output
+            assert expected_error in output, f'expected {expected_error!r} in output'
         if expected_code is not None:
-            assert code == expected_code
-        if expected_conf:
-            list_output, list_code = monctl('list')
-            target = conf if expected_conf == 'match_input' else expected_conf
-            assert list_output.splitlines()[-1] == 'monctl ' + target
-            assert list_code == 0
+            assert code == expected_code, f'expected exit {expected_code}, got {code}'
     except AssertionError as e:
         failures.append(step)
-        print(f'  FAILED. code={code}')
+        print(f'  FAILED: {e}')
         print(f'  output={output}')
         return
     print('  ok')
 
 
-def test_reapply_current_profile_is_idempotent(original_conf):
-    # The one test that's fully topology-agnostic: whatever `list` says is
-    # live right now, reapplying it should round-trip back to itself exactly.
-    # This replaces the old hardcoded per-machine `reset_conf` and is also
-    # used to restore your original arrangement at the end.
-    test('reapply_current_profile_matches_input', original_conf, 'match_input', 0, None)
+def test_reapply_current_profile_is_idempotent():
+    # The one test that's fully topology-agnostic: whatever the current layout is, saving and
+    # re-applying it should report "no change" for every screen.
+    test('save_restore_point', f'profile save {RESTORE_PROFILE}')
+    output, code = monctl(f'profile apply {RESTORE_PROFILE} --dry-run')
+    ok = code == 0 and 'no change' in output and 'rotate' not in output and 'resolution' not in output
+    print(f'{"PASS" if ok else "FAIL"}: reapplying the current layout reports no changes')
+    if not ok:
+        failures.append('reapply_current_profile_is_idempotent')
+        print(f'  output={output}')
 
 
-def test_single_screen_no_id_required(screens):
-    if len(screens) != 1:
-        print('SKIP: single-screen-no-id test (needs exactly 1 active screen, found %d)' % len(screens))
-        return
-    # Can't assert an exact expected_conf or exit code here since success
-    # depends on whether res:1920x1080 happens to be a mode your one screen
-    # actually supports - just confirm it runs without crashing.
-    test('set_conf_without_passing_in_id', 'res:1920x1080', expected_code=None)
+def test_missing_screen_reports_error(screens):
+    test(
+        'set_missing_screen_reports_error',
+        f'set --screen {FAKE_UUID} --rotate 90',
+        expected_code=1,
+        expected_error=f'no screen matches id "{FAKE_UUID}"',
+    )
 
 
-def test_missing_screen_partial_application(screens, original_conf):
-    real_uuid = screens[0]
-    real_props = ' '.join(screen_properties(original_conf, real_uuid))
-    conf = f'"id:{FAKE_UUID} enabled:false" "id:{real_uuid} {real_props}"'
-    test('missing_screen_partial_error_others_still_applied', conf,
-         expected_code=1, expected_error=f'Unable to find screen {FAKE_UUID}')
+def test_quiet_suppresses_missing_screen(screens):
+    test(
+        'set_quiet_suppresses_missing_screen',
+        f'set --screen {FAKE_UUID} --rotate 90 --quiet',
+        expected_code=0,
+    )
 
 
-def test_quiet_mode_suppresses_missing_screen(screens, original_conf):
-    real_uuid = screens[0]
-    real_props = ' '.join(screen_properties(original_conf, real_uuid))
-    conf = f'"id:{FAKE_UUID} enabled:false quiet:true" "id:{real_uuid} {real_props}"'
-    test('missing_screen_quiet_mode_suppresses_error', conf, expected_code=0)
-
-
-def test_disable_enable_secondary_screen(screens, original_conf):
+def test_disable_enable_secondary_screen(screens):
     if len(screens) < 2:
         print('SKIP: disable/enable secondary screen test (needs 2+ screens, found %d)' % len(screens))
         return
-    secondary = screens[1]
-    secondary_props = ' '.join(screen_properties(original_conf, secondary))
-    test('disable_secondary_screen', f'"id:{secondary} enabled:false"')
-    test('reenable_secondary_screen', f'"id:{secondary} {secondary_props}"')
+    secondary = screens[1]['persistentID']
+    test('disable_secondary_screen', f'set --screen {secondary} --enabled false')
+    test('reenable_secondary_screen', f'set --screen {secondary} --enabled true')
 
 
-def test_mirroring(screens, original_conf):
+def test_relative_placement(screens):
+    if len(screens) < 2:
+        print('SKIP: relative placement test (needs 2+ screens, found %d)' % len(screens))
+        return
+    primary, secondary = screens[0]['persistentID'], screens[1]['persistentID']
+    test('place_secondary_right_of_primary', f'set --screen {secondary} --right-of {primary}')
+    test('place_secondary_below_primary', f'set --screen {secondary} --below {primary}')
+
+
+def test_mirroring(screens):
     if len(screens) < 2:
         print('SKIP: mirroring test (needs 2+ screens, found %d)' % len(screens))
         return
-    primary, secondary = screens[0], screens[1]
-    primary_props = ' '.join(screen_properties(original_conf, primary))
-    secondary_props = ' '.join(screen_properties(original_conf, secondary))
-    test('enable_mirroring', f'"id:{primary}+{secondary} {primary_props}"')
-    test('disable_mirroring', f'"id:{primary} {primary_props}" "id:{secondary} {secondary_props}"')
+    primary, secondary = screens[0]['persistentID'], screens[1]['persistentID']
+    test('enable_mirroring', f'set --screen {primary} --mirror {secondary}')
+    test('disable_mirroring', f'set --screen {primary} --mirror ""')
+
+
+def test_profile_apply_no_confirm_env(screens):
+    test(
+        'profile_apply_skips_prompt_with_no_confirm_env',
+        f'profile apply {RESTORE_PROFILE}',
+        expected_code=0,
+        extra_env={'MONCTL_PROFILE_APPLY_NO_CONFIRM': '1'},
+    )
+
+
+def test_profile_apply_no_confirm_env_overrides_config():
+    # Every config.json key has an environment variable counterpart, and env always wins when
+    # both are set (see docs/usage.md's Configuration section) - profileApplyNoConfirm is the
+    # one setting whose precedence needs a real (non-dry-run) `profile apply` to observe, which
+    # is why it's here instead of in test_cli.py. Uses an isolated XDG_CONFIG_HOME so this never
+    # touches your real config.json or saved profiles.
+    with tempfile.TemporaryDirectory() as config_home:
+        config_dir = f'{config_home}/monctl'
+        subprocess.run(['mkdir', '-p', config_dir], check=True)
+        with open(f'{config_dir}/config.json', 'w') as f:
+            json.dump({'profileApplyNoConfirm': False}, f)
+
+        env = {'XDG_CONFIG_HOME': config_home, 'MONCTL_PROFILE_APPLY_NO_CONFIRM': '1'}
+        name = 'tests-manual-env-precedence'
+        test('save_env_precedence_profile', f'profile save {name}', extra_env=env)
+        test(
+            'profile_apply_no_confirm_env_overrides_config_false',
+            f'profile apply {name}',
+            expected_code=0,
+            extra_env=env,
+        )
 
 
 def main():
@@ -149,21 +148,23 @@ def main():
     print('')
 
     screens = discover_screens()
-    print(f'Discovered {len(screens)} screen(s): {screens}')
+    print(f'Discovered {len(screens)} screen(s): {[s["persistentID"] for s in screens]}')
     print('')
 
-    original_conf = current_profile_command()
-
-    test_reapply_current_profile_is_idempotent(original_conf)
-    test_single_screen_no_id_required(screens)
-    test_missing_screen_partial_application(screens, original_conf)
-    test_quiet_mode_suppresses_missing_screen(screens, original_conf)
-    test_disable_enable_secondary_screen(screens, original_conf)
-    test_mirroring(screens, original_conf)
+    test_reapply_current_profile_is_idempotent()
+    test_missing_screen_reports_error(screens)
+    test_quiet_suppresses_missing_screen(screens)
+    test_disable_enable_secondary_screen(screens)
+    test_relative_placement(screens)
+    test_mirroring(screens)
+    test_profile_apply_no_confirm_env(screens)
+    test_profile_apply_no_confirm_env_overrides_config()
 
     print('')
     print('Restoring original arrangement...')
-    test('restore_original_arrangement', original_conf, 'match_input', None, None)
+    test('restore_original_arrangement', f'profile apply {RESTORE_PROFILE}',
+         extra_env={'MONCTL_PROFILE_APPLY_NO_CONFIRM': '1'})
+    monctl(f'profile rm {RESTORE_PROFILE}')
 
     if failures:
         print(f'\n{len(failures)} test(s) failed:')

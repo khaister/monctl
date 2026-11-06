@@ -51,7 +51,7 @@ func convertSerialToID(_ serialIdString: String) -> CGDirectDisplayID {
         return curScreen
     }
 
-    eprint("Error converting serialId \(serialIdString) to a screenId\n")
+    printError("could not convert serial id \"\(serialIdString)\" to a screen id.")
     return 0
 }
 
@@ -66,7 +66,7 @@ func validateScreenOnline(
     }
 
     if !quietMissingScreen {
-        eprint("Unable to find screen \(screenUUID) - skipping changes for that screen\n")
+        printWarning("no screen matches id \"\(screenUUID)\" - skipping changes for that screen.")
     }
     return false
 }
