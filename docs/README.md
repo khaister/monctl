@@ -11,6 +11,10 @@
 
 - [Development](development.md) — building, formatting, linting
 
+## References
+
+- [References](references.md) — external articles and notes relevant to monctl, such as the M4/M5 HiDPI limitation on 4K displays
+
 ## Design proposals
 
 - [CLI Modernization](modernization.md) — proposal for the flag/subcommand-based CLI redesign implemented in [Usage](usage.md)
